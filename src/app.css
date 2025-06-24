@@ -1,0 +1,262 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Chrome-like styling */
+:root {
+  --chrome-bg: #f1f3f4;
+  --chrome-border: #dadce0;
+  --chrome-tab: #ffffff;
+  --chrome-tab-hover: #f8f9fa;
+  --chrome-address-bar: #ffffff;
+  --chrome-sidebar: #f9f9f9;
+  --chrome-sidebar-dark: #202124;
+}
+
+/* Global styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background-color: var(--chrome-bg);
+}
+
+#app {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Selection styling */
+::selection {
+  background-color: #4285f4;
+  color: white;
+}
+
+/* Focus styles */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Chrome-specific component styles */
+.chrome-button {
+  @apply px-4 py-2 rounded text-sm font-medium transition-colors;
+  background-color: #f8f9fa;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+}
+
+.chrome-button:hover {
+  background-color: #f1f3f4;
+  border-color: #dadce0;
+}
+
+.chrome-button:active {
+  background-color: #e8eaed;
+}
+
+.chrome-button.primary {
+  background-color: #1a73e8;
+  border-color: #1a73e8;
+  color: white;
+}
+
+.chrome-button.primary:hover {
+  background-color: #1557b0;
+  border-color: #1557b0;
+}
+
+.chrome-input {
+  @apply px-3 py-2 border rounded text-sm;
+  border-color: #dadce0;
+  background-color: white;
+}
+
+.chrome-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 1px #4285f4;
+}
+
+/* Tab styling */
+.tab-container {
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.tab-item {
+  position: relative;
+  border-right: 1px solid var(--chrome-border);
+  transition: background-color 0.1s ease;
+}
+
+.tab-item:hover {
+  background-color: var(--chrome-tab-hover);
+}
+
+.tab-item.active {
+  background-color: var(--chrome-tab);
+  border-top: 2px solid #4285f4;
+  z-index: 1;
+}
+
+/* Address bar styling */
+.address-bar-container {
+  background-color: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.address-input {
+  background-color: var(--chrome-address-bar);
+  border: 1px solid var(--chrome-border);
+  border-radius: 24px;
+}
+
+.address-input:focus-within {
+  border-color: #4285f4;
+  box-shadow: 0 0 0 1px #4285f4;
+}
+
+/* Developer tools styling */
+.dev-tools {
+  background-color: var(--chrome-sidebar-dark);
+  color: #e8eaed;
+  border-left: 1px solid #3c4043;
+}
+
+.dev-tools-tab {
+  transition: all 0.1s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.dev-tools-tab:hover {
+  background-color: #3c4043;
+}
+
+.dev-tools-tab.active {
+  background-color: #292a2d;
+  border-bottom-color: #4285f4;
+  color: #4285f4;
+}
+
+/* Console styling */
+.console-output {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  background-color: #292a2d;
+}
+
+.console-entry {
+  border-bottom: 1px solid #3c4043;
+}
+
+.console-entry:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Loading states */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.loading-placeholder {
+  animation: fadeIn 0.3s ease-in;
+}
+
+/* Torrent file list styling */
+.file-item {
+  transition: all 0.1s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.file-item:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Error page styling */
+.error-page {
+  animation: fadeIn 0.5s ease-in;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .dev-sidebar {
+    width: 100% !important;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 100;
+  }
+  
+  .tab-content {
+    width: 100% !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .tab-bar,
+  .address-bar,
+  .dev-sidebar {
+    display: none !important;
+  }
+  
+  .tab-content {
+    width: 100% !important;
+    height: auto !important;
+  }
+}
