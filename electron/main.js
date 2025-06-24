@@ -17,6 +17,11 @@ let torrentClient;
 let browserViews = new Map(); // Store browser views for web content
 let currentViewId = null;
 
+// Calculate the correct Y offset for browser views (tab bar + address bar)
+const TAB_BAR_HEIGHT = 36;
+const ADDRESS_BAR_HEIGHT = 48;
+const BROWSER_VIEW_Y_OFFSET = TAB_BAR_HEIGHT + ADDRESS_BAR_HEIGHT;
+
 // Initialize WebTorrent client in main process
 function initializeTorrentClient() {
   torrentClient = new WebTorrent({
@@ -53,6 +58,27 @@ function sendToRenderer(channel, data) {
   }
 }
 
+function updateBrowserViewBounds() {
+  if (currentViewId && browserViews.has(currentViewId)) {
+    const view = browserViews.get(currentViewId);
+    const [width, height] = mainWindow.getContentSize();
+    
+    console.log('Updating browser view bounds:', {
+      width,
+      height,
+      yOffset: BROWSER_VIEW_Y_OFFSET,
+      viewHeight: height - BROWSER_VIEW_Y_OFFSET
+    });
+    
+    view.setBounds({ 
+      x: 0, 
+      y: BROWSER_VIEW_Y_OFFSET,
+      width: width, 
+      height: height - BROWSER_VIEW_Y_OFFSET
+    });
+  }
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -77,7 +103,8 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL(`http://localhost:${port}`);
-    mainWindow.webContents.openDevTools();
+    // Position dev tools to not interfere with tabs
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
@@ -98,18 +125,35 @@ function createWindow() {
     }
   });
 
+  // Handle all resize events
   mainWindow.on('resize', () => {
-    // Update browser view bounds when window is resized
-    if (currentViewId && browserViews.has(currentViewId)) {
-      const view = browserViews.get(currentViewId);
-      const bounds = mainWindow.getBounds();
-      view.setBounds({ 
-        x: 0, 
-        y: 84,
-        width: bounds.width, 
-        height: bounds.height - 84 
-      });
-    }
+    console.log('Window resize event');
+    updateBrowserViewBounds();
+  });
+
+  // Handle maximize event
+  mainWindow.on('maximize', () => {
+    console.log('Window maximize event');
+    // Small delay to ensure window state is updated
+    setTimeout(updateBrowserViewBounds, 10);
+  });
+
+  // Handle unmaximize/restore event
+  mainWindow.on('unmaximize', () => {
+    console.log('Window unmaximize event');
+    // Small delay to ensure window state is updated
+    setTimeout(updateBrowserViewBounds, 10);
+  });
+
+  // Handle window state changes (for Windows)
+  mainWindow.on('restore', () => {
+    console.log('Window restore event');
+    setTimeout(updateBrowserViewBounds, 10);
+  });
+
+  // Handle when window is moved (can affect bounds on some systems)
+  mainWindow.on('move', () => {
+    updateBrowserViewBounds();
   });
 }
 
@@ -397,13 +441,13 @@ ipcMain.handle('create-browser-view', async (event, url) => {
     const viewId = Date.now().toString();
     browserViews.set(viewId, view);
 
-    // Set view bounds (adjust for tab bar and address bar)
-    const bounds = mainWindow.getBounds();
+    // Set view bounds using proper content size
+    const [width, height] = mainWindow.getContentSize();
     view.setBounds({ 
       x: 0, 
-      y: 84, // Tab bar (36px) + Address bar (48px)
-      width: bounds.width, 
-      height: bounds.height - 84 
+      y: BROWSER_VIEW_Y_OFFSET,
+      width: width, 
+      height: height - BROWSER_VIEW_Y_OFFSET
     });
 
     view.setAutoResize({ 
@@ -458,13 +502,13 @@ ipcMain.handle('set-active-browser-view', async (event, viewId) => {
       const view = browserViews.get(viewId);
       mainWindow.addBrowserView(view);
       
-      // Update bounds
-      const bounds = mainWindow.getBounds();
+      // Update bounds using proper content size
+      const [width, height] = mainWindow.getContentSize();
       view.setBounds({ 
         x: 0, 
-        y: 84,
-        width: bounds.width, 
-        height: bounds.height - 84 
+        y: BROWSER_VIEW_Y_OFFSET,
+        width: width, 
+        height: height - BROWSER_VIEW_Y_OFFSET
       });
       
       currentViewId = viewId;

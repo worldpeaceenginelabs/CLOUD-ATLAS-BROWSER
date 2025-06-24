@@ -284,8 +284,10 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    width: 100vw;
     background: var(--chrome-bg);
     overflow: hidden;
+    position: relative;
   }
 
   .content-area {
@@ -293,15 +295,20 @@
     position: relative;
     overflow: hidden;
     background: white;
+    /* Ensure content area takes exactly the remaining space */
+    min-height: 0;
+    width: 100%;
   }
 
-  /* Ensure content area takes remaining space */
+  /* Ensure tab content fills the content area properly */
   .content-area :global(.tab-content) {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
   }
 

@@ -13,6 +13,8 @@
   --chrome-blue: #1a73e8;
   --chrome-text: #3c4043;
   --chrome-text-secondary: #5f6368;
+  --tab-bar-height: 36px;
+  --address-bar-height: 48px;
 }
 
 /* Global styles */
@@ -28,21 +30,27 @@ html, body {
   background-color: var(--chrome-bg);
   color: var(--chrome-text);
   font-size: 13px;
+  overflow: hidden; /* Prevent scrollbars on window */
 }
 
 #app {
   height: 100vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Chrome tab bar styling */
 .tab-bar {
   background: var(--chrome-bg);
   border-bottom: 1px solid var(--chrome-border);
-  height: 36px;
+  height: var(--tab-bar-height);
+  min-height: var(--tab-bar-height);
+  max-height: var(--tab-bar-height);
   display: flex;
   align-items: flex-end;
   padding: 0 8px;
+  flex-shrink: 0; /* Don't shrink */
 }
 
 .tabs-container {
@@ -99,8 +107,11 @@ html, body {
 .address-bar {
   background: var(--chrome-bg);
   border-bottom: 1px solid var(--chrome-border);
-  height: 48px;
+  height: var(--address-bar-height);
+  min-height: var(--address-bar-height);
+  max-height: var(--address-bar-height);
   padding: 8px;
+  flex-shrink: 0; /* Don't shrink */
 }
 
 .address-input-container {
@@ -172,15 +183,44 @@ html, body {
   background: #1557b0;
 }
 
+/* Browser window layout */
+.browser-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--chrome-bg);
+  overflow: hidden;
+}
+
+/* Content area - should take remaining space */
+.content-area {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: white;
+  /* Explicit height calculation to ensure proper sizing */
+  height: calc(100vh - var(--tab-bar-height) - var(--address-bar-height));
+  min-height: 0; /* Allow flexbox to shrink this */
+}
+
 /* Tab content area */
 .tab-content {
   background: white;
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow: hidden;
+  transition: opacity 0.2s ease-in-out;
 }
 
 .tab-content.hidden {
   display: none;
+}
+
+.tab-content.active {
+  display: block;
 }
 
 /* Web content iframe */
@@ -191,9 +231,38 @@ html, body {
   background: white;
 }
 
+/* Ensure web content placeholder takes full space */
+.web-content-placeholder {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.web-content-active {
+  width: 100%;
+  height: 100%;
+}
+
 /* Torrent content styling */
 .torrent-container {
   background: white;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Default content styling */
+.default-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.seeding-container {
+  width: 100%;
   height: 100%;
   overflow-y: auto;
 }
