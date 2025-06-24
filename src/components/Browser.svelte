@@ -154,7 +154,16 @@
       if (!url.trim()) return;
 
       if (activeTabId) {
-        if (url.startsWith('magnet:')) {
+        if (action === 'refresh') {
+          // Handle refresh action - reload current page
+          const activeTab = tabs.find(t => t.id === activeTabId);
+          if (activeTab && activeTab.viewId) {
+            const view = window.electronAPI ? await window.electronAPI.navigateBrowserView(activeTab.viewId, activeTab.url) : null;
+            if (view !== false) {
+              addLog(`Page refreshed: ${activeTab.url}`, 'info');
+            }
+          }
+        } else if (url.startsWith('magnet:')) {
           await handleMagnetLink(url);
         } else {
           // Handle regular web navigation

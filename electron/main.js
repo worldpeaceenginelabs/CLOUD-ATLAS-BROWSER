@@ -115,8 +115,41 @@ function createWindow() {
             }
           },
           {
-            label: 'Reload',
-            accelerator: 'CmdOrCtrl+R',
+            label: 'Reload Page',
+            accelerator: 'F5',
+            click: () => {
+              // Reload the current website, not the electron app
+              if (currentViewId && browserViews.has(currentViewId)) {
+                const view = browserViews.get(currentViewId);
+                view.webContents.reload();
+                console.log('Reloading current website in view:', currentViewId);
+              } else {
+                // No active browser view, reload the electron app
+                mainWindow.reload();
+                console.log('No active website, reloading Electron app');
+              }
+            }
+          },
+          {
+            label: 'Force Reload Page',
+            accelerator: 'CmdOrCtrl+F5',
+            click: () => {
+              // Force reload the current website
+              if (currentViewId && browserViews.has(currentViewId)) {
+                const view = browserViews.get(currentViewId);
+                view.webContents.reloadIgnoringCache();
+                console.log('Force reloading current website in view:', currentViewId);
+              } else {
+                // No active browser view, force reload the electron app
+                mainWindow.webContents.reloadIgnoringCache();
+                console.log('No active website, force reloading Electron app');
+              }
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Reload Electron App',
+            accelerator: 'CmdOrCtrl+Shift+R',
             click: () => {
               mainWindow.reload();
             }
@@ -155,9 +188,9 @@ function createWindow() {
     }
   });
 
-  // Handle dev tools properly
+  // Handle dev tools and page reload properly
   if (isDev) {
-    // Allow F12 to toggle dev tools
+    // Allow F12 to toggle dev tools and F5 to reload current page
     mainWindow.webContents.on('before-input-event', (event, input) => {
       if (input.key === 'F12') {
         if (mainWindow.webContents.isDevToolsOpened()) {
@@ -165,6 +198,27 @@ function createWindow() {
         } else {
           // Open dev tools in detached mode to avoid layout issues
           mainWindow.webContents.openDevTools({ mode: 'detach' });
+        }
+      } else if (input.key === 'F5') {
+        // Reload the current website, not the electron app
+        if (currentViewId && browserViews.has(currentViewId)) {
+          const view = browserViews.get(currentViewId);
+          if (input.control || input.meta) {
+            // Ctrl+F5 or Cmd+F5 for hard reload
+            view.webContents.reloadIgnoringCache();
+          } else {
+            // F5 for normal reload
+            view.webContents.reload();
+          }
+          console.log('Reloading current website in view:', currentViewId);
+        } else {
+          // No active browser view, reload the electron app (for development)
+          if (input.control || input.meta) {
+            mainWindow.webContents.reloadIgnoringCache();
+          } else {
+            mainWindow.reload();
+          }
+          console.log('No active website, reloading Electron app');
         }
       }
     });
