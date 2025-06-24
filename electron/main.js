@@ -429,12 +429,15 @@ app.on('open-url', (event, url) => {
 // Web content management
 ipcMain.handle('create-browser-view', async (event, url) => {
   try {
+    console.log('Creating browser view for URL:', url);
+    
     const view = new BrowserView({
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         webSecurity: true,
-        allowRunningInsecureContent: false
+        allowRunningInsecureContent: false,
+        sandbox: false // Disable sandbox to prevent iterator errors
       }
     });
 
@@ -455,34 +458,45 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       height: true 
     });
 
-    // Load URL
-    await view.webContents.loadURL(url);
-
     // Handle navigation events
     view.webContents.on('did-start-loading', () => {
+      console.log('Browser view started loading:', viewId);
       sendToRenderer('web-navigation', { viewId, event: 'loading-start' });
     });
 
     view.webContents.on('did-stop-loading', () => {
+      console.log('Browser view stopped loading:', viewId);
       sendToRenderer('web-navigation', { viewId, event: 'loading-stop' });
     });
 
     view.webContents.on('page-title-updated', (event, title) => {
+      console.log('Browser view title updated:', viewId, title);
       sendToRenderer('web-navigation', { viewId, event: 'title-updated', title });
     });
 
     view.webContents.on('did-navigate', (event, url) => {
+      console.log('Browser view navigated:', viewId, url);
       sendToRenderer('web-navigation', { viewId, event: 'navigate', url });
+    });
+
+    view.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      console.error('Browser view failed to load:', viewId, errorCode, errorDescription, validatedURL);
+      sendToRenderer('web-navigation', { viewId, event: 'load-failed', error: errorDescription });
     });
 
     // Handle new window requests (target="_blank" links)
     view.webContents.setWindowOpenHandler(({ url }) => {
+      console.log('New window requested from view:', viewId, 'URL:', url);
       // Send to renderer to create new tab
       sendToRenderer('create-new-tab-with-url', url);
       return { action: 'deny' };
     });
 
-    console.log('Browser view created:', viewId, url);
+    // Load URL
+    console.log('Loading URL in browser view:', url);
+    await view.webContents.loadURL(url);
+
+    console.log('Browser view created successfully:', viewId, url);
     return viewId;
 
   } catch (error) {
@@ -493,9 +507,13 @@ ipcMain.handle('create-browser-view', async (event, url) => {
 
 ipcMain.handle('set-active-browser-view', async (event, viewId) => {
   try {
+    console.log('Setting active browser view:', viewId, 'current:', currentViewId);
+    
     // Hide current view
     if (currentViewId && browserViews.has(currentViewId)) {
-      mainWindow.removeBrowserView(browserViews.get(currentViewId));
+      const currentView = browserViews.get(currentViewId);
+      mainWindow.removeBrowserView(currentView);
+      console.log('Removed current view:', currentViewId);
     }
 
     // Show new view
@@ -512,9 +530,19 @@ ipcMain.handle('set-active-browser-view', async (event, viewId) => {
         height: height - BROWSER_VIEW_Y_OFFSET
       });
       
+      // Focus the view to ensure it's interactive
+      view.webContents.focus();
+      
       currentViewId = viewId;
-      console.log('Set active browser view:', viewId);
+      console.log('Set active browser view:', viewId, 'with bounds:', {
+        x: 0, 
+        y: BROWSER_VIEW_Y_OFFSET,
+        width: width, 
+        height: height - BROWSER_VIEW_Y_OFFSET
+      });
       return true;
+    } else if (viewId && !browserViews.has(viewId)) {
+      console.warn('Requested view ID not found:', viewId, 'Available views:', Array.from(browserViews.keys()));
     }
 
     currentViewId = null;

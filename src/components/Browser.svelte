@@ -16,24 +16,25 @@
   // Subscribe to tab store with debugging
   tabStore.subscribe(value => {
     console.log('Tab store updated:', value);
+    const oldActiveTabId = activeTabId;
     tabs = value.tabs;
+    activeTabId = value.activeTabId;
     
     // If activeTabId changed, handle the switch
-    if (activeTabId !== value.activeTabId) {
-      const oldActiveTabId = activeTabId;
-      activeTabId = value.activeTabId;
-      
+    if (oldActiveTabId !== activeTabId) {
       console.log('Active tab changed from', oldActiveTabId, 'to', activeTabId);
       
       // Handle browser view switching when active tab changes
-      const newActiveTab = tabs.find(t => t.id === activeTabId);
-      if (newActiveTab && newActiveTab.viewId) {
-        window.electronAPI?.setActiveBrowserView(newActiveTab.viewId);
-      } else {
-        window.electronAPI?.setActiveBrowserView(null);
+      if (window.electronAPI) {
+        const newActiveTab = tabs.find(t => t.id === activeTabId);
+        if (newActiveTab && newActiveTab.viewId) {
+          console.log('Switching to browser view:', newActiveTab.viewId);
+          window.electronAPI.setActiveBrowserView(newActiveTab.viewId);
+        } else {
+          console.log('No browser view for active tab, hiding all views');
+          window.electronAPI.setActiveBrowserView(null);
+        }
       }
-    } else {
-      activeTabId = value.activeTabId;
     }
   });
 
@@ -83,13 +84,21 @@
       });
 
       // Handle new tab requests from target="_blank" links
-      window.electronAPI.onCreateNewTabWithUrl((url) => {
+      window.electronAPI.onCreateNewTabWithUrl(async (url) => {
         console.log('Creating new tab for URL:', url);
         const tabId = tabStore.createTab(url, 'Loading...');
-        handleWebContent(url, tabId);
-        // Switch to the new tab
+        
+        // Switch to the new tab first
         tabStore.setActiveTab(tabId);
-        addLog(`New tab opened: ${url}`, 'info');
+        
+        // Then load the web content
+        try {
+          await handleWebContent(url, tabId);
+          addLog(`New tab opened: ${url}`, 'info');
+        } catch (error) {
+          addLog(`Failed to load new tab: ${error.message}`, 'error');
+          tabStore.updateTab(tabId, { loading: false, title: 'Failed to load' });
+        }
       });
     }
 
@@ -166,25 +175,44 @@
     const targetTabId = tabId || activeTabId;
     
     try {
+      console.log('handleWebContent called with:', { url, tabId: targetTabId, activeTabId });
+      
+      // Update tab to loading state
+      tabStore.updateTab(targetTabId, { 
+        url, 
+        loading: true,
+        title: 'Loading...'
+      });
+      
       // Create browser view
+      console.log('Creating browser view for:', url);
       const viewId = await window.electronAPI.createBrowserView(url);
+      
       if (viewId) {
+        console.log('Browser view created with ID:', viewId);
+        
+        // Update tab with view ID
         tabStore.updateTab(targetTabId, { 
-          url, 
-          viewId,
-          loading: true,
-          title: 'Loading...'
+          viewId
         });
         
-        // Set as active view
-        await window.electronAPI.setActiveBrowserView(viewId);
+        // If this is the active tab, set the view as active
+        if (targetTabId === activeTabId) {
+          console.log('Setting as active browser view since it\'s the active tab');
+          const success = await window.electronAPI.setActiveBrowserView(viewId);
+          if (!success) {
+            console.error('Failed to set browser view as active');
+          }
+        }
+        
         addLog(`Web content loaded: ${url}`, 'success');
       } else {
         throw new Error('Failed to create browser view');
       }
     } catch (error) {
+      console.error('Web navigation error:', error);
       addLog(`Web navigation error: ${error.message}`, 'error');
-      tabStore.updateTab(targetTabId, { loading: false });
+      tabStore.updateTab(targetTabId, { loading: false, title: 'Failed to load' });
     }
   }
 
