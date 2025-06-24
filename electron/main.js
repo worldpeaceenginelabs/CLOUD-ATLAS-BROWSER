@@ -475,9 +475,10 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       sendToRenderer('web-navigation', { viewId, event: 'navigate', url });
     });
 
-    // Security: Prevent new windows
+    // Handle new window requests (target="_blank" links)
     view.webContents.setWindowOpenHandler(({ url }) => {
-      shell.openExternal(url);
+      // Send to renderer to create new tab
+      sendToRenderer('create-new-tab-with-url', url);
       return { action: 'deny' };
     });
 
@@ -561,11 +562,23 @@ ipcMain.handle('navigate-browser-view', async (event, viewId, url) => {
   }
 });
 
-// Security
+// Security - handle new windows appropriately
 app.on('web-contents-created', (event, contents) => {
   contents.on('new-window', (event, navigationUrl) => {
-    event.preventDefault();
-    shell.openExternal(navigationUrl);
+    // Check if this is from a browser view
+    const isBrowserView = Array.from(browserViews.values()).some(view => 
+      view.webContents === contents
+    );
+    
+    if (isBrowserView) {
+      // Send to renderer to create new tab
+      event.preventDefault();
+      sendToRenderer('create-new-tab-with-url', navigationUrl);
+    } else {
+      // For main window or other contexts, open externally
+      event.preventDefault();
+      shell.openExternal(navigationUrl);
+    }
   });
 });
 

@@ -84,8 +84,12 @@
 
       // Handle new tab requests from target="_blank" links
       window.electronAPI.onCreateNewTabWithUrl((url) => {
+        console.log('Creating new tab for URL:', url);
         const tabId = tabStore.createTab(url, 'Loading...');
         handleWebContent(url, tabId);
+        // Switch to the new tab
+        tabStore.setActiveTab(tabId);
+        addLog(`New tab opened: ${url}`, 'info');
       });
     }
 
