@@ -5,8 +5,10 @@
   import TabContent from './TabContent.svelte';
   import { tabStore } from '../stores/tabStore.js';
 
-  export let logs = [];
   export let addLog;
+  
+  // logs is for external reference only
+  export const logs = [];
 
   let activeTabId = null;
   let tabs = [];

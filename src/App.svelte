@@ -10,6 +10,13 @@
       type, 
       timestamp: new Date().toLocaleTimeString() 
     }];
+    
+    // Optional: Log to console for debugging
+    if (window.electronConsole) {
+      window.electronConsole.log(`[${type.toUpperCase()}] ${message}`);
+    } else {
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
   }
 
   // Initialize WebTorrent logging
@@ -20,13 +27,14 @@
   }
 </script>
 
-<div class="app font-chrome">
-  <Browser bind:logs={logs} {addLog} />
+<div class="app">
+  <Browser {addLog} />
 </div>
 
 <style>
   .app {
     height: 100vh;
     overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 </style>

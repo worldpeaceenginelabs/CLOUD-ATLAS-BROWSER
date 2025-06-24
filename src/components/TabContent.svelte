@@ -244,9 +244,10 @@
         
         {#if tab.generatedMagnet}
           <div class="magnet-link bg-white border border-green-300 rounded p-3">
-            <label class="block text-sm font-medium text-green-900 mb-1">Magnet Link:</label>
+            <label for="magnet-link-input" class="block text-sm font-medium text-green-900 mb-1">Magnet Link:</label>
             <div class="flex items-center gap-2">
               <input 
+                id="magnet-link-input"
                 type="text" 
                 value={tab.generatedMagnet} 
                 readonly 

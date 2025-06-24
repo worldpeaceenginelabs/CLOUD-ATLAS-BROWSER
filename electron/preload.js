@@ -53,9 +53,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }
 });
 
-// Basic console for debugging
-contextBridge.exposeInMainWorld('console', {
-  log: (...args) => console.log('[Renderer]', ...args),
-  error: (...args) => console.error('[Renderer]', ...args),
-  warn: (...args) => console.warn('[Renderer]', ...args)
-});
+// Basic console for debugging (only if not already exists)
+if (!window.electronConsole) {
+  contextBridge.exposeInMainWorld('electronConsole', {
+    log: (...args) => console.log('[Renderer]', ...args),
+    error: (...args) => console.error('[Renderer]', ...args),
+    warn: (...args) => console.warn('[Renderer]', ...args)
+  });
+}

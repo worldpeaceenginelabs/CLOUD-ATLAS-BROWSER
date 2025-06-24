@@ -138,7 +138,7 @@
     display: none; /* Chrome, Safari, Edge */
   }
   
-  .tab-icon {
+  :global(.tab-icon) {
     margin-right: 6px;
     flex-shrink: 0;
     color: #5f6368;
