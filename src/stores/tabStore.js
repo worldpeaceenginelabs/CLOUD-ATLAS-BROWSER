@@ -17,9 +17,7 @@ function createTabStore() {
         url,
         title,
         loading: false,
-        favicon: null,
-        history: [],
-        historyIndex: -1
+        favicon: null
       };
       
       update(state => {
@@ -80,77 +78,6 @@ function createTabStore() {
       let result = null;
       update(state => {
         result = state.tabs.find(tab => tab.id === tabId);
-        return state;
-      });
-      return result;
-    },
-    
-    addToHistory: (tabId, url) => {
-      update(state => ({
-        ...state,
-        tabs: state.tabs.map(tab => {
-          if (tab.id === tabId) {
-            const newHistory = [...tab.history.slice(0, tab.historyIndex + 1), url];
-            return {
-              ...tab,
-              history: newHistory,
-              historyIndex: newHistory.length - 1
-            };
-          }
-          return tab;
-        })
-      }));
-    },
-    
-    goBack: (tabId) => {
-      update(state => ({
-        ...state,
-        tabs: state.tabs.map(tab => {
-          if (tab.id === tabId && tab.historyIndex > 0) {
-            const newIndex = tab.historyIndex - 1;
-            return {
-              ...tab,
-              historyIndex: newIndex,
-              url: tab.history[newIndex]
-            };
-          }
-          return tab;
-        })
-      }));
-    },
-    
-    goForward: (tabId) => {
-      update(state => ({
-        ...state,
-        tabs: state.tabs.map(tab => {
-          if (tab.id === tabId && tab.historyIndex < tab.history.length - 1) {
-            const newIndex = tab.historyIndex + 1;
-            return {
-              ...tab,
-              historyIndex: newIndex,
-              url: tab.history[newIndex]
-            };
-          }
-          return tab;
-        })
-      }));
-    },
-    
-    canGoBack: (tabId) => {
-      let result = false;
-      update(state => {
-        const tab = state.tabs.find(t => t.id === tabId);
-        result = tab && tab.historyIndex > 0;
-        return state;
-      });
-      return result;
-    },
-    
-    canGoForward: (tabId) => {
-      let result = false;
-      update(state => {
-        const tab = state.tabs.find(t => t.id === tabId);
-        result = tab && tab.historyIndex < tab.history.length - 1;
         return state;
       });
       return result;

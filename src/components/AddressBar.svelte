@@ -1,6 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { Search, Send, Shield, RefreshCw, ArrowLeft, ArrowRight } from 'lucide-svelte';
+  import { Search, Send, Shield, RefreshCw, ArrowLeft, ArrowRight, MoreVertical } from 'lucide-svelte';
 
   export let url = '';
   export let loading = false;
@@ -65,99 +65,141 @@
       inputElement.select();
     }
   }
+
+  function getSecurityIcon() {
+    if (url.startsWith('https:')) {
+      return { icon: Shield, color: '#34a853' }; // Green for secure
+    } else if (url.startsWith('http:')) {
+      return { icon: Shield, color: '#ea4335' }; // Red for insecure
+    } else if (url.startsWith('magnet:')) {
+      return { icon: Shield, color: '#1a73e8' }; // Blue for magnet
+    }
+    return { icon: Search, color: '#5f6368' }; // Gray for search
+  }
+
+  $: securityInfo = getSecurityIcon();
 </script>
 
-<div class="address-bar flex items-center bg-chrome-bg px-3 py-2 border-b border-chrome-border">
-  <!-- Navigation buttons -->
-  <div class="nav-buttons flex mr-3">
-    <button 
-      class="nav-btn p-2 rounded hover:bg-gray-200 disabled:opacity-50"
-      on:click={handleBack}
-      disabled={true}
-      aria-label="Back"
-    >
-      <ArrowLeft size={16} class="text-gray-600" />
-    </button>
-    <button 
-      class="nav-btn p-2 rounded hover:bg-gray-200 disabled:opacity-50"
-      on:click={handleForward}
-      disabled={true}
-      aria-label="Forward"
-    >
-      <ArrowRight size={16} class="text-gray-600" />
-    </button>
-    <button 
-      class="nav-btn p-2 rounded hover:bg-gray-200"
-      on:click={handleRefresh}
-      aria-label="Refresh"
-    >
-      <RefreshCw size={16} class="text-gray-600 {loading ? 'animate-spin' : ''}" />
-    </button>
-  </div>
-
-  <!-- Address input -->
-  <div class="address-input-container flex-1 flex items-center bg-white border border-chrome-border rounded-full px-4 py-2 mx-2">
-    <!-- Security indicator -->
-    <div class="security-indicator mr-2">
-      <Shield size={16} class="text-gray-400" />
+<div class="address-bar">
+  <div class="address-bar-content">
+    <!-- Navigation buttons -->
+    <div class="nav-buttons">
+      <button 
+        class="nav-btn"
+        on:click={handleBack}
+        disabled={true}
+        aria-label="Back"
+      >
+        <ArrowLeft size={16} />
+      </button>
+      <button 
+        class="nav-btn"
+        on:click={handleForward}
+        disabled={true}
+        aria-label="Forward"
+      >
+        <ArrowRight size={16} />
+      </button>
+      <button 
+        class="nav-btn"
+        on:click={handleRefresh}
+        aria-label="Refresh"
+      >
+        <RefreshCw size={16} class="{loading ? 'animate-spin' : ''}" />
+      </button>
     </div>
 
-    <!-- URL input -->
-    <input 
-      bind:this={inputElement}
-      bind:value={inputValue}
-      on:keydown={handleKeyDown}
-      on:focus={selectAll}
-      class="url-input flex-1 outline-none text-sm text-gray-800 bg-transparent"
-      placeholder="Search or enter address"
-      spellcheck="false"
-      autocomplete="off"
-    />
+    <!-- Address input -->
+    <div class="address-input-container">
+      <!-- Security/Search indicator -->
+      <div class="security-indicator">
+        <svelte:component 
+          this={securityInfo.icon} 
+          size={16} 
+          style="color: {securityInfo.color}" 
+        />
+      </div>
 
-    <!-- Search/Go button -->
-    <button 
-      class="search-btn p-1 rounded hover:bg-gray-100"
-      on:click={handleSubmit}
-      aria-label="Go"
-    >
-      <Search size={16} class="text-gray-500" />
-    </button>
+      <!-- URL input -->
+      <input 
+        bind:this={inputElement}
+        bind:value={inputValue}
+        on:keydown={handleKeyDown}
+        on:focus={selectAll}
+        class="url-input"
+        placeholder="Search Google or type a URL"
+        spellcheck="false"
+        autocomplete="off"
+      />
+
+      <!-- Search/Go button -->
+      <button 
+        class="search-btn nav-btn"
+        on:click={handleSubmit}
+        aria-label="Go"
+      >
+        <Search size={16} />
+      </button>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-buttons">
+      <button 
+        class="send-btn"
+        on:click={handleSendClick}
+        aria-label="Send file via WebTorrent"
+        title="Seed a file"
+      >
+        <Send size={14} />
+        Send
+      </button>
+      
+      <button 
+        class="nav-btn"
+        aria-label="More options"
+        title="More options"
+      >
+        <MoreVertical size={16} />
+      </button>
+    </div>
   </div>
-
-  <!-- Send button -->
-  <button 
-    class="send-btn flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium transition-colors"
-    on:click={handleSendClick}
-    aria-label="Send file via WebTorrent"
-  >
-    <Send size={16} class="mr-2" />
-    Send
-  </button>
 </div>
 
 <style>
-  .address-bar {
-    min-height: 48px;
+  .address-bar-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 1200px;
+    margin: 0 auto;
   }
 
-  .nav-btn {
-    transition: background-color 0.1s ease;
+  .nav-buttons {
+    display: flex;
+    gap: 2px;
   }
 
-  .address-input-container {
-    transition: border-color 0.1s ease;
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 
-  .address-input-container:focus-within {
-    border-color: #4285f4;
-    box-shadow: 0 0 0 1px #4285f4;
+  .security-indicator {
+    display: flex;
+    align-items: center;
+    margin-right: 8px;
+    flex-shrink: 0;
   }
 
-  .url-input::placeholder {
-    color: #9aa0a6;
+  .search-btn {
+    margin-left: 4px;
   }
 
   .send-btn {
-    transition: background-color 0.1s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
   }
 </style>

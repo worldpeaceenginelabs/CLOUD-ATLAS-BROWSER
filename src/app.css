@@ -2,15 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Chrome-like styling */
+/* Chrome-like styling variables */
 :root {
   --chrome-bg: #f1f3f4;
   --chrome-border: #dadce0;
   --chrome-tab: #ffffff;
+  --chrome-tab-inactive: #e8eaed;
   --chrome-tab-hover: #f8f9fa;
   --chrome-address-bar: #ffffff;
-  --chrome-sidebar: #f9f9f9;
-  --chrome-sidebar-dark: #202124;
+  --chrome-blue: #1a73e8;
+  --chrome-text: #3c4043;
+  --chrome-text-secondary: #5f6368;
 }
 
 /* Global styles */
@@ -22,8 +24,10 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background-color: var(--chrome-bg);
+  color: var(--chrome-text);
+  font-size: 13px;
 }
 
 #app {
@@ -31,7 +35,190 @@ html, body {
   overflow: hidden;
 }
 
-/* Custom scrollbar for webkit browsers */
+/* Chrome tab bar styling */
+.tab-bar {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+  height: 36px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 8px;
+}
+
+.tab {
+  background: var(--chrome-tab-inactive);
+  border: 1px solid var(--chrome-border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  height: 32px;
+  min-width: 120px;
+  max-width: 240px;
+  margin-right: 1px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.1s ease;
+}
+
+.tab:hover {
+  background: var(--chrome-tab-hover);
+}
+
+.tab.active {
+  background: var(--chrome-tab);
+  border-color: var(--chrome-border);
+  z-index: 10;
+}
+
+.tab.active::before {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--chrome-tab);
+}
+
+/* Address bar styling */
+.address-bar {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+  height: 48px;
+  padding: 8px;
+}
+
+.address-input-container {
+  background: var(--chrome-address-bar);
+  border: 1px solid var(--chrome-border);
+  border-radius: 24px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.address-input-container:focus-within {
+  border-color: var(--chrome-blue);
+  box-shadow: 0 0 0 1px var(--chrome-blue);
+}
+
+.url-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--chrome-text);
+}
+
+.url-input::placeholder {
+  color: var(--chrome-text-secondary);
+}
+
+/* Navigation buttons */
+.nav-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: rgba(60, 64, 67, 0.08);
+}
+
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Send button */
+.send-btn {
+  background: var(--chrome-blue);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.send-btn:hover {
+  background: #1557b0;
+}
+
+/* Tab content area */
+.tab-content {
+  background: white;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tab-content.hidden {
+  display: none;
+}
+
+/* Web content iframe */
+.web-content-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* Torrent content styling */
+.torrent-container {
+  background: white;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Chrome-style buttons */
+.chrome-button {
+  background: #f8f9fa;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  color: var(--chrome-text);
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.chrome-button:hover {
+  background: #f1f3f4;
+  border-color: #dadce0;
+}
+
+.chrome-button:active {
+  background: #e8eaed;
+}
+
+.chrome-button.primary {
+  background: var(--chrome-blue);
+  border-color: var(--chrome-blue);
+  color: white;
+}
+
+.chrome-button.primary:hover {
+  background: #1557b0;
+  border-color: #1557b0;
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -50,38 +237,14 @@ html, body {
   background: #a8a8a8;
 }
 
-/* Selection styling */
-::selection {
-  background-color: #4285f4;
-  color: white;
-}
-
 /* Focus styles */
 button:focus-visible,
 input:focus-visible {
-  outline: 2px solid #4285f4;
+  outline: 2px solid var(--chrome-blue);
   outline-offset: 2px;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
+/* Loading spinner */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -91,172 +254,112 @@ input:focus-visible {
   }
 }
 
-/* Chrome-specific component styles */
-.chrome-button {
-  @apply px-4 py-2 rounded text-sm font-medium transition-colors;
-  background-color: #f8f9fa;
-  border: 1px solid #dadce0;
-  color: #3c4043;
-}
-
-.chrome-button:hover {
-  background-color: #f1f3f4;
-  border-color: #dadce0;
-}
-
-.chrome-button:active {
-  background-color: #e8eaed;
-}
-
-.chrome-button.primary {
-  background-color: #1a73e8;
-  border-color: #1a73e8;
-  color: white;
-}
-
-.chrome-button.primary:hover {
-  background-color: #1557b0;
-  border-color: #1557b0;
-}
-
-.chrome-input {
-  @apply px-3 py-2 border rounded text-sm;
-  border-color: #dadce0;
-  background-color: white;
-}
-
-.chrome-input:focus {
-  outline: none;
-  border-color: #4285f4;
-  box-shadow: 0 0 0 1px #4285f4;
-}
-
-/* Tab styling */
-.tab-container {
-  border-bottom: 1px solid var(--chrome-border);
-}
-
-.tab-item {
-  position: relative;
-  border-right: 1px solid var(--chrome-border);
-  transition: background-color 0.1s ease;
-}
-
-.tab-item:hover {
-  background-color: var(--chrome-tab-hover);
-}
-
-.tab-item.active {
-  background-color: var(--chrome-tab);
-  border-top: 2px solid #4285f4;
-  z-index: 1;
-}
-
-/* Address bar styling */
-.address-bar-container {
-  background-color: var(--chrome-bg);
-  border-bottom: 1px solid var(--chrome-border);
-}
-
-.address-input {
-  background-color: var(--chrome-address-bar);
-  border: 1px solid var(--chrome-border);
-  border-radius: 24px;
-}
-
-.address-input:focus-within {
-  border-color: #4285f4;
-  box-shadow: 0 0 0 1px #4285f4;
-}
-
-/* Developer tools styling */
-.dev-tools {
-  background-color: var(--chrome-sidebar-dark);
-  color: #e8eaed;
-  border-left: 1px solid #3c4043;
-}
-
-.dev-tools-tab {
-  transition: all 0.1s ease;
-  border-bottom: 2px solid transparent;
-}
-
-.dev-tools-tab:hover {
-  background-color: #3c4043;
-}
-
-.dev-tools-tab.active {
-  background-color: #292a2d;
-  border-bottom-color: #4285f4;
-  color: #4285f4;
-}
-
-/* Console styling */
-.console-output {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  background-color: #292a2d;
-}
-
-.console-entry {
-  border-bottom: 1px solid #3c4043;
-}
-
-.console-entry:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-}
-
-/* Loading states */
-.loading-spinner {
+.animate-spin {
   animation: spin 1s linear infinite;
 }
 
-.loading-placeholder {
-  animation: fadeIn 0.3s ease-in;
-}
-
-/* Torrent file list styling */
+/* File list styling for torrent content */
 .file-item {
+  background: #f8f9fa;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
   transition: all 0.1s ease;
-  border: 1px solid #e5e7eb;
 }
 
 .file-item:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+  background: #f1f3f4;
+  border-color: #dadce0;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Error page styling */
-.error-page {
-  animation: fadeIn 0.5s ease-in;
+/* Progress bars */
+.progress-bar {
+  background: #e8eaed;
+  border-radius: 4px;
+  height: 4px;
+  overflow: hidden;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-  .dev-sidebar {
-    width: 100% !important;
-    position: absolute;
-    right: 0;
-    top: 0;
-    z-index: 100;
-  }
-  
-  .tab-content {
-    width: 100% !important;
-  }
+.progress-fill {
+  background: var(--chrome-blue);
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
 }
 
-/* Print styles */
-@media print {
-  .tab-bar,
-  .address-bar,
-  .dev-sidebar {
-    display: none !important;
-  }
-  
-  .tab-content {
-    width: 100% !important;
-    height: auto !important;
-  }
+/* Status indicators */
+.status-bar {
+  background: #f8f9fa;
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* Action buttons */
+.action-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn:disabled:hover {
+  background-color: inherit !important;
+}
+
+/* Close button on tabs */
+.close-btn {
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.1s ease;
+}
+
+.tab:hover .close-btn {
+  opacity: 1;
+}
+
+.close-btn:hover {
+  background: rgba(60, 64, 67, 0.1);
+}
+
+/* New tab button */
+.new-tab-btn {
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 4px;
+  transition: background-color 0.1s ease;
+}
+
+.new-tab-btn:hover {
+  background: rgba(60, 64, 67, 0.08);
 }
