@@ -1,351 +1,84 @@
-import { app, BrowserWindow, BrowserView, ipcMain, dialog, shell, session } from 'electron';
-import { fileURLToPath } from 'node:url';
-import { readFile, createWriteStream } from 'node:fs';
-import { promisify } from 'node:util';
-import path from 'node:path';
-import os from 'node:os';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import path from 'path';
+import fs from 'fs';
+import os from 'os';
+import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const readFileAsync = promisify(readFile);
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Security: Disable node integration and enable context isolation
-process.env.APP_ROOT = path.join(__dirname, '..');
+// Security: Enable context isolation by default
+app.commandLine.appendSwitch('--enable-features', 'ElectronSerialChooser');
 
-export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron');
-export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist');
-
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
-  ? path.join(process.env.APP_ROOT, 'public')
-  : RENDERER_DIST;
+const isDev = process.env.IS_DEV === 'true';
+const port = process.env.PORT || 5173;
 
 let mainWindow;
-const tabViews = new Map();
 
-// Security: Configure Content Security Policy
-const setupCSP = () => {
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self' 'unsafe-inline' data: blob: wss: ws:; " +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-          "style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' data: blob: https:; " +
-          "media-src 'self' data: blob: https:; " +
-          "connect-src 'self' wss: ws: https: http:; " +
-          "font-src 'self' data:;"
-        ]
-      }
-    });
+// Security: Prevent new window creation
+app.on('web-contents-created', (event, contents) => {
+  contents.on('new-window', (event, navigationUrl) => {
+    event.preventDefault();
+    shell.openExternal(navigationUrl);
   });
-};
-
-// Security: Setup secure session defaults
-const setupSecureSession = () => {
-  // Clear any insecure data
-  session.defaultSession.clearStorageData();
-  
-  // Configure security settings
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    // Deny dangerous permissions by default
-    const deniedPermissions = ['openExternal', 'notifications'];
-    if (deniedPermissions.includes(permission)) {
-      callback(false);
-      return;
-    }
-    
-    // Allow safe permissions
-    const allowedPermissions = ['media', 'geolocation'];
-    callback(allowedPermissions.includes(permission));
-  });
-
-  // Block external navigation attempts
-  session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
-    const url = details.url;
-    
-    // Allow local development server and file protocols
-    if (url.startsWith('http://localhost:') || 
-        url.startsWith('https://localhost:') ||
-        url.startsWith('file://') ||
-        url.startsWith('devtools://')) {
-      callback({});
-      return;
-    }
-    
-    // Allow specific domains for WebTorrent trackers
-    const allowedDomains = [
-      'tracker.openwebtorrent.com',
-      'tracker.btorrent.xyz',
-      'tracker.webtorrent.io'
-    ];
-    
-    const urlObj = new URL(url);
-    if (allowedDomains.includes(urlObj.hostname)) {
-      callback({});
-      return;
-    }
-    
-    // Block everything else in the main process
-    callback({ cancel: true });
-  });
-};
+});
 
 function createWindow() {
-  // Setup security before creating windows
-  setupCSP();
-  setupSecureSession();
-
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    minWidth: 800,
-    minHeight: 600,
     webPreferences: {
+      nodeIntegration: false,          // Security: Disable node integration
+      contextIsolation: true,          // Security: Enable context isolation
+      enableRemoteModule: false,       // Security: Disable remote module
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,           // Security: Disable node integration
-      contextIsolation: true,           // Security: Enable context isolation
-      enableRemoteModule: false,        // Security: Disable remote module
-      allowRunningInsecureContent: false, // Security: Block insecure content
-      experimentalFeatures: false,      // Security: Disable experimental features
-      webgl: false,                     // Security: Disable WebGL
-      plugins: false,                   // Security: Disable plugins
-      sandbox: false,                   // Keep false for WebTorrent functionality
-      webSecurity: true,                // Security: Enable web security
-      partition: 'main-window'          // Isolated session
+      webSecurity: true,               // Security: Enable web security
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false
     },
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    show: false,
-    icon: path.join(process.env.VITE_PUBLIC, 'icon.png') // Add app icon
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    show: false, // Don't show until ready
+    titleBarStyle: 'default'
   });
 
-  // Security: Prevent new window creation
+  // Security: Remove menu in production
+  if (!isDev) {
+    mainWindow.setMenuBarVisibility(false);
+  }
+
+  // Load the app - dev server or built files
+  if (isDev) {
+    mainWindow.loadURL(`http://localhost:${port}`);
+    // Open DevTools in development
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  }
+
+  // Show window when ready
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  // Security: Handle external links
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Allow opening in external browser for safe URLs
-    if (url.startsWith('https://')) {
-      shell.openExternal(url);
-    }
+    shell.openExternal(url);
     return { action: 'deny' };
   });
 
-  // Security: Handle navigation attempts
-  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-    const parsedUrl = new URL(navigationUrl);
-    
-    // Only allow navigation to local development server
-    if (parsedUrl.origin !== 'http://localhost:5173' && 
-        !navigationUrl.startsWith('file://')) {
+  // Security: Prevent navigation to external URLs
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith(`http://localhost:${port}`) && !url.startsWith('file://')) {
       event.preventDefault();
+      shell.openExternal(url);
     }
   });
-
-  // Load the application
-  if (VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'));
-  }
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
-  });
-
-  // Development: Open DevTools in development
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.webContents.openDevTools();
-  }
 }
 
-// Security: Validate all file paths
-const validateFilePath = (filePath) => {
-  if (!filePath || typeof filePath !== 'string') {
-    throw new Error('Invalid file path');
-  }
-  
-  const normalizedPath = path.normalize(filePath);
-  const isAbsolute = path.isAbsolute(normalizedPath);
-  
-  if (!isAbsolute) {
-    throw new Error('File path must be absolute');
-  }
-  
-  return normalizedPath;
-};
+app.whenReady().then(createWindow);
 
-// IPC Handlers with security validation
-ipcMain.handle('select-file', async () => {
-  try {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ['openFile'],
-      filters: [
-        { name: 'All Files', extensions: ['*'] },
-        { name: 'Media Files', extensions: ['mp4', 'avi', 'mkv', 'mp3', 'wav'] },
-        { name: 'Documents', extensions: ['pdf', 'txt', 'doc', 'docx'] },
-        { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp'] }
-      ]
-    });
-    
-    if (!result.canceled && result.filePaths.length > 0) {
-      return validateFilePath(result.filePaths[0]);
-    }
-    return null;
-  } catch (error) {
-    console.error('Error selecting file:', error);
-    return null;
-  }
-});
-
-ipcMain.handle('select-folder', async () => {
-  try {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ['openDirectory']
-    });
-    
-    if (!result.canceled && result.filePaths.length > 0) {
-      return validateFilePath(result.filePaths[0]);
-    }
-    return null;
-  } catch (error) {
-    console.error('Error selecting folder:', error);
-    return null;
-  }
-});
-
-ipcMain.handle('get-download-path', async () => {
-  return app.getPath('downloads');
-});
-
-ipcMain.handle('show-save-dialog', async (event, defaultName) => {
-  try {
-    const result = await dialog.showSaveDialog(mainWindow, {
-      defaultPath: path.join(app.getPath('downloads'), defaultName),
-      filters: [
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    });
-    
-    return result.canceled ? null : result.filePath;
-  } catch (error) {
-    console.error('Error showing save dialog:', error);
-    return null;
-  }
-});
-
-ipcMain.handle('read-file-for-seeding', async (event, filePath) => {
-  try {
-    const validatedPath = validateFilePath(filePath);
-    const buffer = await readFileAsync(validatedPath);
-    return buffer;
-  } catch (error) {
-    console.error('Error reading file for seeding:', error);
-    throw new Error(`Failed to read file: ${error.message}`);
-  }
-});
-
-ipcMain.handle('save-stream-to-file', async (event, streamData, savePath) => {
-  try {
-    const validatedPath = validateFilePath(savePath);
-    // Implementation would depend on how stream data is passed
-    // This is a placeholder for the actual implementation
-    return true;
-  } catch (error) {
-    console.error('Error saving stream to file:', error);
-    throw new Error(`Failed to save file: ${error.message}`);
-  }
-});
-
-// Enhanced tab management with BrowserView for better security
-ipcMain.handle('create-tab-view', async (event, url) => {
-  try {
-    const view = new BrowserView({
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true,                    // Enable sandbox for tab content
-        preload: path.join(__dirname, 'tab-preload.js'),
-        webSecurity: true,
-        allowRunningInsecureContent: false,
-        partition: `persist:tab-${Date.now()}`
-      }
-    });
-
-    // Security: Handle navigation in tabs
-    view.webContents.on('will-navigate', (event, navigationUrl) => {
-      // Allow navigation to safe URLs only
-      const parsedUrl = new URL(navigationUrl);
-      const allowedProtocols = ['https:', 'http:', 'magnet:'];
-      
-      if (!allowedProtocols.includes(parsedUrl.protocol)) {
-        event.preventDefault();
-      }
-    });
-
-    // Security: Prevent new window creation from tabs
-    view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-
-    const viewId = Date.now();
-    tabViews.set(viewId, view);
-
-    // Load URL if provided
-    if (url) {
-      if (url.startsWith('magnet:')) {
-        // Handle magnet links in the main process
-        // Load a special torrent handler page
-        view.webContents.loadURL(`file://${path.join(RENDERER_DIST, 'torrent.html')}?magnet=${encodeURIComponent(url)}`);
-      } else {
-        view.webContents.loadURL(url);
-      }
-    }
-
-    return viewId;
-  } catch (error) {
-    console.error('Error creating tab view:', error);
-    return null;
-  }
-});
-
-ipcMain.handle('set-active-tab-view', async (event, viewId) => {
-  try {
-    const view = tabViews.get(viewId);
-    if (view && mainWindow) {
-      mainWindow.setBrowserView(view);
-      
-      // Set view bounds (adjust for your UI layout)
-      const bounds = mainWindow.getBounds();
-      view.setBounds({
-        x: 0,
-        y: 90, // Adjust based on your tab bar height
-        width: bounds.width - 400, // Adjust for sidebar
-        height: bounds.height - 90
-      });
-    }
-  } catch (error) {
-    console.error('Error setting active tab view:', error);
-  }
-});
-
-ipcMain.handle('close-tab-view', async (event, viewId) => {
-  try {
-    const view = tabViews.get(viewId);
-    if (view) {
-      if (mainWindow && mainWindow.getBrowserView() === view) {
-        mainWindow.setBrowserView(null);
-      }
-      view.webContents.destroy();
-      tabViews.delete(viewId);
-    }
-  } catch (error) {
-    console.error('Error closing tab view:', error);
-  }
-});
-
-// App event handlers
 app.on('window-all-closed', () => {
-  // Cleanup all tab views
-  tabViews.forEach(view => view.webContents.destroy());
-  tabViews.clear();
-  
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -357,9 +90,111 @@ app.on('activate', () => {
   }
 });
 
-// Security: Prevent certificate errors in development
+// Security: Prevent protocol handler hijacking
+app.setAsDefaultProtocolClient('magnet');
+
+// IPC Handlers for secure communication
+ipcMain.handle('select-file', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openFile'],
+      filters: [
+        { name: 'All Files', extensions: ['*'] },
+        { name: 'Videos', extensions: ['mp4', 'avi', 'mkv', 'mov'] },
+        { name: 'Audio', extensions: ['mp3', 'wav', 'flac', 'ogg'] },
+        { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif'] },
+        { name: 'Documents', extensions: ['pdf', 'txt', 'doc', 'docx'] }
+      ]
+    });
+    
+    return result.canceled ? null : result.filePaths[0];
+  } catch (error) {
+    console.error('File selection error:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('show-save-dialog', async (event, defaultName) => {
+  try {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: path.join(os.homedir(), 'Downloads', defaultName),
+      filters: [
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    });
+    
+    return result.canceled ? null : result.filePath;
+  } catch (error) {
+    console.error('Save dialog error:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('read-file-for-seeding', async (event, filePath) => {
+  try {
+    // Security: Validate file path
+    if (!fs.existsSync(filePath)) {
+      throw new Error('File does not exist');
+    }
+    
+    const stats = fs.statSync(filePath);
+    if (stats.size > 5 * 1024 * 1024 * 1024) { // 5GB limit
+      throw new Error('File too large (max 5GB)');
+    }
+    
+    return fs.readFileSync(filePath);
+  } catch (error) {
+    console.error('File reading error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('save-stream-to-file', async (event, streamData, filePath) => {
+  try {
+    // Security: Validate file path
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    fs.writeFileSync(filePath, streamData);
+    return true;
+  } catch (error) {
+    console.error('File saving error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-download-path', async () => {
+  return path.join(os.homedir(), 'Downloads');
+});
+
+ipcMain.handle('validate-magnet-uri', async (event, magnetUri) => {
+  try {
+    // Basic magnet URI validation
+    return magnetUri && 
+           magnetUri.startsWith('magnet:') && 
+           magnetUri.includes('xt=urn:btih:');
+  } catch (error) {
+    return false;
+  }
+});
+
+// Handle magnet link protocol
+ipcMain.handle('handle-magnet-link', async (event, magnetUri) => {
+  try {
+    mainWindow.webContents.send('handle-magnet-link', magnetUri);
+    return true;
+  } catch (error) {
+    console.error('Magnet link handling error:', error);
+    return false;
+  }
+});
+
+// Security: Handle certificate errors
 app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
-  if (process.env.NODE_ENV === 'development' && url.startsWith('https://localhost:')) {
+  // In development, ignore certificate errors for localhost
+  if (isDev && url.startsWith('http://localhost:')) {
     event.preventDefault();
     callback(true);
   } else {
@@ -367,21 +202,16 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
   }
 });
 
-// Security: Handle protocol registration securely
-app.whenReady().then(() => {
-  // Register magnet protocol handler
-  app.setAsDefaultProtocolClient('magnet');
-  
-  createWindow();
-});
-
-// Handle magnet link clicks from external applications
-app.on('open-url', (event, url) => {
-  event.preventDefault();
-  if (url.startsWith('magnet:')) {
-    // Send magnet link to renderer process
-    if (mainWindow) {
-      mainWindow.webContents.send('handle-magnet-link', url);
+// Security: Limit permissions
+app.on('web-contents-created', (event, contents) => {
+  contents.on('permission-request', (event, permission, callback) => {
+    const allowedPermissions = ['media'];
+    
+    if (allowedPermissions.includes(permission)) {
+      callback(true);
+    } else {
+      console.log(`Denied permission: ${permission}`);
+      callback(false);
     }
-  }
+  });
 });

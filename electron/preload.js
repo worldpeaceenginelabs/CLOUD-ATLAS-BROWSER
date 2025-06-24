@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+const { contextBridge, ipcRenderer } = require('electron');
 
 // Security: Validate all inputs before sending to main process
 const validateInput = (input, type) => {
@@ -27,7 +27,9 @@ const ALLOWED_CHANNELS = {
     'save-stream-to-file',
     'create-tab-view',
     'set-active-tab-view',
-    'close-tab-view'
+    'close-tab-view',
+    'validate-magnet-uri',
+    'handle-magnet-link'
   ],
   send: [
     'console-message',
@@ -78,6 +80,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   saveStreamToFile: createSafeIpcInvoker('save-stream-to-file', (streamData, savePath) => 
     streamData && validateInput(savePath, 'path')
+  ),
+
+  // Torrent operations
+  validateMagnetUri: createSafeIpcInvoker('validate-magnet-uri', (magnetUri) => 
+    validateInput(magnetUri, 'magnetUri')
+  ),
+  
+  handleMagnetLink: createSafeIpcInvoker('handle-magnet-link', (magnetUri) => 
+    validateInput(magnetUri, 'magnetUri')
   ),
 
   // Tab management
@@ -162,10 +173,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     } catch {
       return null;
     }
-  },
-
-  validateMagnetUri: (uri) => {
-    return validateInput(uri, 'magnetUri');
   },
 
   // Cleanup

@@ -47,12 +47,21 @@
   },
   "dependencies": {
     "webtorrent": "^2.6.8",
-    "parse-torrent": "^11.0.17",
-    "magnet-uri": "^7.0.7",
+    "parse-torrent": "^11.0.14",
+    "magnet-uri": "^7.0.5",
     "lucide-svelte": "^0.523.0",
     "mime-types": "^2.1.35",
-    "sanitize-html": "^2.13.1",
-    "validator": "^13.12.0"
+    "sanitize-html": "^2.13.0",
+    "validator": "^13.12.0",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
+    "util": "^0.12.5",
+    "path-browserify": "^1.0.1",
+    "crypto-browserify": "^3.12.0",
+    "readable-stream": "^4.4.2",
+    "os-browserify": "^0.3.0",
+    "url": "^0.11.3",
+    "querystring-es3": "^0.2.1"
   },
   "overrides": {
     "esbuild": "^0.25.5",

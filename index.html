@@ -65,6 +65,24 @@
       </div>
     </div>
     
+    <!-- Load Buffer polyfill before main module -->
+    <script>
+      // Import Buffer from the buffer package loaded by Vite
+      import('buffer').then(bufferModule => {
+        window.Buffer = bufferModule.Buffer;
+        globalThis.Buffer = bufferModule.Buffer;
+        console.log('Buffer polyfill loaded successfully');
+      }).catch(error => {
+        console.warn('Failed to load Buffer polyfill:', error);
+      });
+      
+      // Fix global if needed
+      if (typeof global === 'undefined') {
+        window.global = window;
+        globalThis.global = globalThis;
+      }
+    </script>
+    
     <script type="module" src="/src/main.js"></script>
     
     <script>

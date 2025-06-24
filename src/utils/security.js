@@ -1,350 +1,399 @@
-import validator from 'validator';
 import sanitizeHtml from 'sanitize-html';
+import validator from 'validator';
 
-// Security: URL validation and sanitization
+// URL validation patterns
+const DANGEROUS_PROTOCOLS = ['javascript:', 'data:', 'vbscript:', 'file:', 'about:'];
+const MALICIOUS_PATTERNS = [
+  /javascript:/i,
+  /data:text\/html/i,
+  /vbscript:/i,
+  /<script/i,
+  /on\w+\s*=/i,
+  /eval\s*\(/i,
+  /document\.write/i
+];
+
+const TRUSTED_DOMAINS = [
+  'github.com',
+  'google.com',
+  'mozilla.org',
+  'wikipedia.org',
+  'stackoverflow.com'
+];
+
+/**
+ * Validates and sanitizes URLs for security
+ * @param {string} url - URL to validate
+ * @returns {string|null} - Sanitized URL or null if invalid/dangerous
+ */
 export function validateUrl(url) {
   if (!url || typeof url !== 'string') {
     return null;
   }
 
-  // Remove dangerous characters
-  const cleaned = url.trim();
+  // Trim and normalize
+  url = url.trim();
   
-  // Handle magnet links
-  if (cleaned.startsWith('magnet:')) {
-    return validateMagnetUri(cleaned);
+  // Handle magnet links separately
+  if (url.startsWith('magnet:')) {
+    return validateMagnetUri(url);
   }
 
-  // Handle regular URLs
-  try {
-    const urlObj = new URL(cleaned.startsWith('http') ? cleaned : `https://${cleaned}`);
-    
-    // Block dangerous protocols
-    const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:', 'ftp:'];
-    if (dangerousProtocols.includes(urlObj.protocol)) {
-      throw new Error('Dangerous protocol detected');
+  // Check for dangerous protocols
+  for (const protocol of DANGEROUS_PROTOCOLS) {
+    if (url.toLowerCase().startsWith(protocol)) {
+      throw new Error(`Dangerous protocol detected: ${protocol}`);
     }
+  }
 
-    // Block localhost and private IPs in production
-    if (process.env.NODE_ENV === 'production') {
-      const hostname = urlObj.hostname.toLowerCase();
-      
-      const privateDomains = [
-        'localhost', '127.0.0.1', '0.0.0.0',
-        '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.',
-        '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.',
-        '172.27.', '172.28.', '172.29.', '172.30.', '172.31.', '192.168.'
-      ];
-      
-      if (privateDomains.some(domain => hostname.includes(domain))) {
-        throw new Error('Private network access blocked');
+  // Check for malicious patterns
+  for (const pattern of MALICIOUS_PATTERNS) {
+    if (pattern.test(url)) {
+      throw new Error('Potentially malicious content detected in URL');
+    }
+  }
+
+  // Validate URL format
+  try {
+    // Handle relative URLs and add protocol if missing
+    if (!url.includes('://')) {
+      if (url.includes('.') && !url.includes(' ')) {
+        url = 'https://' + url;
+      } else {
+        // Treat as search query
+        return `https://www.google.com/search?q=${encodeURIComponent(url)}`;
       }
     }
 
-    // Validate domain
-    if (!validator.isFQDN(urlObj.hostname) && !validator.isIP(urlObj.hostname)) {
-      throw new Error('Invalid domain name');
+    const urlObj = new URL(url);
+    
+    // Validate using validator library
+    if (!validator.isURL(url, {
+      protocols: ['http', 'https'],
+      require_protocol: true,
+      require_valid_protocol: true,
+      allow_underscores: false,
+      allow_trailing_dot: false,
+      allow_protocol_relative_urls: false
+    })) {
+      throw new Error('Invalid URL format');
     }
 
-    return urlObj.toString();
+    // Additional security checks
+    if (urlObj.hostname.includes('..') || urlObj.hostname.includes('localhost')) {
+      throw new Error('Potentially dangerous hostname');
+    }
+
+    return url;
+    
   } catch (error) {
-    console.warn('URL validation failed:', error.message);
-    return null;
+    if (error.message.includes('dangerous') || error.message.includes('malicious')) {
+      throw error;
+    }
+    throw new Error('Invalid URL format');
   }
 }
 
+/**
+ * Validates magnet URIs
+ * @param {string} magnetUri - Magnet URI to validate
+ * @returns {string|null} - Valid magnet URI or null
+ */
 export function validateMagnetUri(magnetUri) {
   if (!magnetUri || !magnetUri.startsWith('magnet:')) {
     return null;
   }
 
   try {
-    const url = new URL(magnetUri);
-    
-    // Check for required xt parameter (exact topic)
-    const xt = url.searchParams.get('xt');
-    if (!xt || !xt.startsWith('urn:btih:')) {
-      throw new Error('Invalid magnet URI: missing or invalid xt parameter');
+    // Basic magnet URI format validation
+    const magnetRegex = /^magnet:\?xt=urn:[a-z0-9]+:[a-z0-9]{32,40}/i;
+    if (!magnetRegex.test(magnetUri)) {
+      throw new Error('Invalid magnet URI format');
     }
 
-    // Validate info hash
-    const hash = xt.replace('urn:btih:', '');
-    if (!/^[a-fA-F0-9]{32}$|^[a-fA-F0-9]{40}$/.test(hash)) {
-      throw new Error('Invalid magnet URI: invalid info hash');
+    // Check for suspicious patterns in magnet links
+    if (MALICIOUS_PATTERNS.some(pattern => pattern.test(magnetUri))) {
+      throw new Error('Potentially malicious magnet URI');
     }
 
-    // Check URI length (prevent excessively long URIs)
+    // Validate length (prevent extremely long magnet URIs)
     if (magnetUri.length > 2000) {
       throw new Error('Magnet URI too long');
     }
 
     return magnetUri;
+    
   } catch (error) {
-    console.warn('Magnet URI validation failed:', error.message);
-    return null;
+    throw new Error(`Invalid magnet URI: ${error.message}`);
   }
 }
 
-// Security: Input sanitization
+/**
+ * Sanitizes user input to prevent XSS and injection attacks
+ * @param {string} input - User input to sanitize
+ * @returns {string} - Sanitized input
+ */
 export function sanitizeInput(input) {
   if (!input || typeof input !== 'string') {
     return '';
   }
 
-  // Basic sanitization
-  let sanitized = input.trim();
-  
-  // Remove null bytes and control characters
-  sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, '');
-  
-  // Limit length
-  if (sanitized.length > 2048) {
-    sanitized = sanitized.substring(0, 2048);
-  }
-
-  return sanitized;
-}
-
-export function sanitizeHtmlContent(html) {
-  return sanitizeHtml(html, {
-    allowedTags: [
-      'p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li',
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'blockquote', 'code', 'pre'
-    ],
+  // Remove potential script tags and dangerous content
+  const sanitized = sanitizeHtml(input, {
+    allowedTags: [],
     allowedAttributes: {},
-    allowedSchemes: ['https'],
-    disallowedTagsMode: 'discard'
+    disallowedTagsMode: 'escape'
   });
+
+  // Additional cleanup
+  return sanitized
+    .replace(/javascript:/gi, '')
+    .replace(/vbscript:/gi, '')
+    .replace(/data:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .trim();
 }
 
-// Security: File validation
-export function validateFileName(fileName) {
-  if (!fileName || typeof fileName !== 'string') {
+/**
+ * Validates file paths for security
+ * @param {string} filePath - File path to validate
+ * @returns {boolean} - Whether the path is safe
+ */
+export function validateFilePath(filePath) {
+  if (!filePath || typeof filePath !== 'string') {
     return false;
   }
 
-  // Check for dangerous file extensions
-  const dangerousExtensions = [
-    '.exe', '.bat', '.cmd', '.com', '.pif', '.scr', '.vbs', '.js',
-    '.jar', '.app', '.deb', '.pkg', '.dmg', '.sh', '.ps1'
-  ];
-
-  const lowerFileName = fileName.toLowerCase();
-  if (dangerousExtensions.some(ext => lowerFileName.endsWith(ext))) {
+  // Check for directory traversal attempts
+  if (filePath.includes('..') || filePath.includes('~')) {
     return false;
   }
 
-  // Check for path traversal attempts
-  if (fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+  // Check for absolute paths (should be relative or in allowed directories)
+  if (filePath.startsWith('/') || /^[a-zA-Z]:/.test(filePath)) {
     return false;
   }
 
-  // Check length
-  if (fileName.length > 255) {
+  // Check for suspicious file extensions
+  const dangerousExtensions = ['.exe', '.bat', '.cmd', '.com', '.scr', '.vbs', '.js'];
+  const extension = filePath.toLowerCase().split('.').pop();
+  
+  if (dangerousExtensions.includes('.' + extension)) {
     return false;
   }
 
   return true;
 }
 
-export function validateFileSize(size) {
-  // Maximum file size: 10GB
-  const MAX_FILE_SIZE = 10 * 1024 * 1024 * 1024;
-  return typeof size === 'number' && size > 0 && size <= MAX_FILE_SIZE;
+/**
+ * Checks if a domain is in the trusted list
+ * @param {string} url - URL to check
+ * @returns {boolean} - Whether the domain is trusted
+ */
+export function isTrustedDomain(url) {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    
+    return TRUSTED_DOMAINS.some(domain => 
+      hostname === domain || hostname.endsWith('.' + domain)
+    );
+  } catch {
+    return false;
+  }
 }
 
-// Security: Rate limiting
-export class RateLimiter {
-  constructor(maxRequests = 10, windowMs = 60000) {
-    this.maxRequests = maxRequests;
+/**
+ * Generates a Content Security Policy header value
+ * @param {Object} options - CSP options
+ * @returns {string} - CSP header value
+ */
+export function generateCSP(options = {}) {
+  const defaultCSP = {
+    'default-src': ["'self'"],
+    'script-src': ["'self'", "'unsafe-inline'"],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'img-src': ["'self'", 'data:', 'https:'],
+    'connect-src': ["'self'", 'wss:', 'https:'],
+    'font-src': ["'self'"],
+    'object-src': ["'none'"],
+    'media-src': ["'self'", 'blob:', 'data:'],
+    'frame-src': ["'none'"],
+    'base-uri': ["'self'"],
+    'form-action': ["'self'"]
+  };
+
+  const csp = { ...defaultCSP, ...options };
+  
+  return Object.entries(csp)
+    .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
+    .join('; ');
+}
+
+/**
+ * Rate limiting for navigation attempts
+ */
+class RateLimiter {
+  constructor(maxAttempts = 10, windowMs = 60000) {
+    this.maxAttempts = maxAttempts;
     this.windowMs = windowMs;
-    this.requests = [];
+    this.attempts = [];
   }
 
   isAllowed() {
     const now = Date.now();
     
-    // Remove old requests
-    this.requests = this.requests.filter(
-      timestamp => now - timestamp < this.windowMs
+    // Remove old attempts outside the window
+    this.attempts = this.attempts.filter(timestamp => 
+      now - timestamp < this.windowMs
     );
 
-    // Check if limit exceeded
-    if (this.requests.length >= this.maxRequests) {
+    // Check if under the limit
+    if (this.attempts.length >= this.maxAttempts) {
       return false;
     }
 
-    // Add current request
-    this.requests.push(now);
+    // Record this attempt
+    this.attempts.push(now);
     return true;
   }
 
-  getRemainingRequests() {
-    const now = Date.now();
-    this.requests = this.requests.filter(
-      timestamp => now - timestamp < this.windowMs
-    );
-    return Math.max(0, this.maxRequests - this.requests.length);
+  reset() {
+    this.attempts = [];
   }
 }
 
-// Security: Content Security Policy helpers
-export function generateCSP() {
-  const directives = {
-    'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-inline'"],
-    'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': ["'self'", 'data:', 'blob:', 'https:'],
-    'media-src': ["'self'", 'data:', 'blob:', 'https:'],
-    'connect-src': ["'self'", 'wss:', 'ws:', 'https:', 'http:'],
-    'font-src': ["'self'", 'data:'],
-    'object-src': ["'none'"],
-    'base-uri': ["'self'"],
-    'form-action': ["'self'"],
-    'frame-ancestors': ["'none'"],
-    'upgrade-insecure-requests': []
-  };
+export const navigationLimiter = new RateLimiter();
 
-  return Object.entries(directives)
-    .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
-    .join('; ');
-}
-
-// Security: Detect suspicious patterns
-export function detectSuspiciousActivity(logs) {
-  const patterns = {
-    rapidRequests: {
-      threshold: 20,
-      timeWindow: 60000,
-      severity: 'high'
-    },
-    failedNavigations: {
-      threshold: 5,
-      timeWindow: 300000,
-      severity: 'medium'
-    },
-    maliciousUrls: {
-      patterns: [
-        /javascript:/i,
-        /data:text\/html/i,
-        /vbscript:/i,
-        /<script/i
-      ],
-      severity: 'high'
-    }
-  };
-
-  const now = Date.now();
-  const recentLogs = logs.filter(log => 
-    now - new Date(log.timestamp).getTime() < patterns.rapidRequests.timeWindow
-  );
-
-  const warnings = [];
-
-  // Check for rapid requests
-  if (recentLogs.length > patterns.rapidRequests.threshold) {
-    warnings.push({
-      type: 'rapid_requests',
-      message: 'Unusually high number of requests detected',
-      severity: patterns.rapidRequests.severity,
-      count: recentLogs.length
-    });
-  }
-
-  // Check for failed navigations
-  const failedNavigations = recentLogs.filter(log => 
-    log.message.includes('error') || log.message.includes('failed')
-  );
+/**
+ * Detects suspicious activity patterns
+ * @param {Object} activity - Activity data to analyze
+ * @returns {Object} - Threat assessment
+ */
+export function detectSuspiciousActivity(activity) {
+  const threats = [];
   
-  if (failedNavigations.length > patterns.failedNavigations.threshold) {
-    warnings.push({
-      type: 'failed_navigations',
-      message: 'Multiple navigation failures detected',
-      severity: patterns.failedNavigations.severity,
-      count: failedNavigations.length
+  if (!activity) {
+    return { level: 'none', threats: [] };
+  }
+
+  // Check for rapid navigation attempts
+  if (activity.navigationAttempts > 20) {
+    threats.push({
+      type: 'rapid_navigation',
+      message: 'Unusually high number of navigation attempts detected',
+      severity: 'medium'
     });
   }
 
-  // Check for malicious URLs in logs
-  recentLogs.forEach(log => {
-    patterns.maliciousUrls.patterns.forEach(pattern => {
-      if (pattern.test(log.message)) {
-        warnings.push({
-          type: 'malicious_url',
-          message: 'Potentially malicious URL pattern detected',
-          severity: patterns.maliciousUrls.severity,
-          details: log.message
-        });
-      }
+  // Check for malicious URL patterns
+  if (activity.url && MALICIOUS_PATTERNS.some(pattern => pattern.test(activity.url))) {
+    threats.push({
+      type: 'malicious_url',
+      message: 'Potentially malicious URL pattern detected',
+      severity: 'high'
     });
-  });
-
-  return warnings;
-}
-
-// Security: Hash verification
-export async function verifyFileHash(file, expectedHash) {
-  try {
-    const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    
-    return hashHex === expectedHash;
-  } catch (error) {
-    console.error('Hash verification failed:', error);
-    return false;
   }
+
+  // Check for suspicious file downloads
+  if (activity.fileDownloads && activity.fileDownloads > 10) {
+    threats.push({
+      type: 'excessive_downloads',
+      message: 'High number of file downloads detected',
+      severity: 'medium'
+    });
+  }
+
+  // Determine overall threat level
+  let level = 'none';
+  if (threats.some(t => t.severity === 'high')) {
+    level = 'high';
+  } else if (threats.some(t => t.severity === 'medium')) {
+    level = 'medium';
+  } else if (threats.length > 0) {
+    level = 'low';
+  }
+
+  return { level, threats };
 }
 
-// Security: Safe JSON parsing
-export function safeJsonParse(jsonString, fallback = null) {
-  try {
-    const parsed = JSON.parse(jsonString);
+/**
+ * Validates and sanitizes torrent file names
+ * @param {string} fileName - File name to validate
+ * @returns {string} - Sanitized file name
+ */
+export function sanitizeFileName(fileName) {
+  if (!fileName || typeof fileName !== 'string') {
+    return 'unknown-file';
+  }
+
+  // Remove dangerous characters
+  return fileName
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\.\./g, '_')
+    .replace(/^\./, '_')
+    .trim()
+    .substring(0, 255); // Limit length
+}
+
+/**
+ * Checks if a file type is safe to download/stream
+ * @param {string} fileName - File name to check
+ * @returns {boolean} - Whether the file type is safe
+ */
+export function isSafeFileType(fileName) {
+  if (!fileName) return false;
+  
+  const safeExtensions = [
+    // Media files
+    '.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm',
+    '.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac',
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp',
     
-    // Prevent prototype pollution
-    if (parsed && typeof parsed === 'object') {
-      delete parsed.__proto__;
-      delete parsed.constructor;
-      delete parsed.prototype;
+    // Documents
+    '.pdf', '.txt', '.md', '.rtf',
+    
+    // Archives (with caution)
+    '.zip', '.rar', '.7z', '.tar', '.gz'
+  ];
+  
+  const extension = fileName.toLowerCase().split('.').pop();
+  return safeExtensions.includes('.' + extension);
+}
+
+/**
+ * Logs security events for monitoring
+ * @param {string} event - Event type
+ * @param {Object} details - Event details
+ */
+export function logSecurityEvent(event, details = {}) {
+  const logEntry = {
+    timestamp: new Date().toISOString(),
+    event,
+    details: {
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      ...details
     }
-    
-    return parsed;
-  } catch (error) {
-    console.warn('JSON parsing failed:', error);
-    return fallback;
-  }
-}
+  };
 
-// Security: Environment detection
-export function isSecureContext() {
-  return window.isSecureContext && (
-    location.protocol === 'https:' || 
-    location.hostname === 'localhost' ||
-    location.hostname === '127.0.0.1'
-  );
-}
-
-export function isElectronContext() {
-  return typeof window !== 'undefined' && 
-         typeof window.electronAPI !== 'undefined';
-}
-
-// Security: Memory cleanup
-export function secureCleanup(obj) {
-  if (obj && typeof obj === 'object') {
-    Object.keys(obj).forEach(key => {
-      if (typeof obj[key] === 'string' && obj[key].length > 100) {
-        obj[key] = null;
-      } else if (typeof obj[key] === 'object') {
-        secureCleanup(obj[key]);
+  // In a real implementation, this would send to a security monitoring service
+  console.warn('Security Event:', logEntry);
+  
+  // Store locally for development
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const existingLogs = JSON.parse(localStorage.getItem('securityLogs') || '[]');
+      existingLogs.push(logEntry);
+      
+      // Keep only last 100 entries
+      if (existingLogs.length > 100) {
+        existingLogs.splice(0, existingLogs.length - 100);
       }
-    });
+      
+      localStorage.setItem('securityLogs', JSON.stringify(existingLogs));
+    } catch (error) {
+      console.error('Failed to store security log:', error);
+    }
   }
 }
-
-// Export rate limiter instances for common use cases
-export const navigationLimiter = new RateLimiter(20, 60000); // 20 navigations per minute
-export const downloadLimiter = new RateLimiter(5, 30000);   // 5 downloads per 30 seconds
-export const seedingLimiter = new RateLimiter(3, 60000);    // 3 seeding operations per minute

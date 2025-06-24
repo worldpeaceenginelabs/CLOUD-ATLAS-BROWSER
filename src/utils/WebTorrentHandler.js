@@ -1,5 +1,5 @@
-import WebTorrent from 'webtorrent/web';
-import parseTorrent from 'parse-torrent-file';
+import WebTorrent from 'webtorrent';
+import parseTorrent from 'parse-torrent';
 import magnet from 'magnet-uri';
 
 class WebTorrentHandler {

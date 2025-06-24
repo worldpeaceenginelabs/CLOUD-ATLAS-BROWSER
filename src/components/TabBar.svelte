@@ -1,106 +1,175 @@
 <script>
   import { createEventDispatcher } from 'svelte';
-  import { X, Plus } from 'lucide-svelte';
+  import { X, Plus, Globe, Download } from 'lucide-svelte';
 
   export let tabs = [];
   export let activeTabId = null;
 
   const dispatch = createEventDispatcher();
 
-  function selectTab(tabId) {
-    dispatch('selectTab', tabId);
+  function handleNewTab() {
+    dispatch('newTab');
   }
 
-  function closeTab(tabId, event) {
+  function handleCloseTab(tabId, event) {
     event.stopPropagation();
     dispatch('closeTab', tabId);
   }
 
-  function newTab() {
-    dispatch('newTab');
+  function handleSelectTab(tabId) {
+    dispatch('selectTab', tabId);
+  }
+
+  function getTabIcon(tab) {
+    if (tab.url?.startsWith('magnet:')) {
+      return Download;
+    }
+    return Globe;
   }
 
   function getTabTitle(tab) {
-    if (tab.title) return tab.title;
-    if (tab.url) {
-      if (tab.url.startsWith('magnet:')) return 'Torrent';
-      return new URL(tab.url).hostname || tab.url;
+    if (tab.title && tab.title !== 'New Tab') {
+      return tab.title;
     }
-    return 'New Tab';
+    
+    if (tab.url?.startsWith('magnet:')) {
+      return 'Torrent Download';
+    }
+    
+    if (tab.url && tab.url !== 'about:blank') {
+      try {
+        const url = new URL(tab.url);
+        return url.hostname || tab.url;
+      } catch {
+        return tab.url.substring(0, 30) + (tab.url.length > 30 ? '...' : '');
+      }
+    }
+    
+    return tab.title || 'New Tab';
+  }
+
+  function handleTabKeydown(event, tabId) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleSelectTab(tabId);
+    }
+  }
+
+  function handleCloseKeydown(event, tabId) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleCloseTab(tabId, event);
+    }
   }
 </script>
 
-<div class="tab-bar flex items-center bg-chrome-bg border-b border-chrome-border">
+<div class="tab-bar flex items-center bg-gray-100 border-b border-gray-300 px-1 py-1">
   <!-- Tabs -->
-  <div class="tabs flex-1 flex overflow-x-auto">
+  <div class="tabs-container flex flex-1 overflow-x-auto">
     {#each tabs as tab (tab.id)}
       <div 
-        class="tab flex items-center min-w-0 max-w-64 flex-shrink-0 cursor-pointer group
-               {tab.id === activeTabId ? 'active bg-white border-t-2 border-t-blue-500' : 'bg-chrome-tab-hover hover:bg-chrome-tab-hover'}
-               border-r border-chrome-border h-8 px-3"
-        on:click={() => selectTab(tab.id)}
-        on:keydown={(e) => e.key === 'Enter' && selectTab(tab.id)}
+        class="tab flex items-center min-w-32 max-w-64 px-3 py-2 mr-1 rounded-t cursor-pointer border-b-2 transition-all duration-200
+               {tab.id === activeTabId 
+                 ? 'bg-white border-blue-500 text-gray-900 shadow-sm' 
+                 : 'bg-gray-200 border-transparent text-gray-700 hover:bg-gray-250'}"
+        on:click={() => handleSelectTab(tab.id)}
+        on:keydown={(e) => handleTabKeydown(e, tab.id)}
         role="tab"
         tabindex="0"
+        aria-selected={tab.id === activeTabId}
       >
-        <!-- Favicon placeholder -->
-        <div class="favicon w-4 h-4 mr-2 bg-gray-300 rounded-full flex-shrink-0"></div>
-        
-        <!-- Tab title -->
-        <span class="tab-title text-sm text-gray-700 truncate flex-1 min-w-0">
+        <!-- Tab Icon -->
+        <svelte:component 
+          this={getTabIcon(tab)} 
+          size={14} 
+          class="mr-2 flex-shrink-0 {tab.loading ? 'animate-spin' : ''}" 
+        />
+
+        <!-- Tab Title -->
+        <span class="tab-title text-sm truncate flex-1" title={getTabTitle(tab)}>
           {getTabTitle(tab)}
         </span>
-        
-        <!-- Loading indicator -->
+
+        <!-- Loading Indicator -->
         {#if tab.loading}
-          <div class="loading-spinner w-3 h-3 ml-2 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          <div class="loading-dot w-2 h-2 bg-blue-500 rounded-full ml-2 animate-pulse"></div>
         {/if}
-        
-        <!-- Close button -->
-        <button 
-          class="close-btn ml-2 p-1 rounded hover:bg-gray-200 opacity-0 group-hover:opacity-100 transition-opacity"
-          on:click={(e) => closeTab(tab.id, e)}
-          aria-label="Close tab"
-        >
-          <X size={12} class="text-gray-600" />
-        </button>
+
+        <!-- Close Button -->
+        {#if tabs.length > 1}
+          <button 
+            class="close-btn ml-2 p-1 rounded hover:bg-gray-300 transition-colors flex-shrink-0"
+            on:click={(e) => handleCloseTab(tab.id, e)}
+            on:keydown={(e) => handleCloseKeydown(e, tab.id)}
+            aria-label="Close tab"
+            tabindex="0"
+          >
+            <X size={12} />
+          </button>
+        {/if}
       </div>
     {/each}
   </div>
 
-  <!-- New tab button -->
+  <!-- New Tab Button -->
   <button 
-    class="new-tab-btn p-2 hover:bg-gray-200 rounded mx-1"
-    on:click={newTab}
+    class="new-tab-btn p-2 mx-1 rounded hover:bg-gray-200 transition-colors flex-shrink-0"
+    on:click={handleNewTab}
     aria-label="New tab"
+    title="New tab (Ctrl+T)"
   >
     <Plus size={16} class="text-gray-600" />
   </button>
-
-  <!-- Window controls placeholder -->
-  <div class="window-controls w-20 flex-shrink-0"></div>
 </div>
 
 <style>
-  .tab {
-    transition: background-color 0.1s ease;
+  .tab-bar {
+    min-height: 44px;
+    user-select: none;
   }
   
-  .tab.active {
-    position: relative;
-    z-index: 1;
+  .tabs-container {
+    scrollbar-width: none; /* Firefox */
+  }
+  
+  .tabs-container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+  }
+  
+  .tab {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
   }
 
-  .tab:not(.active):hover {
-    background-color: #f8f9fa;
+  .tab:hover .close-btn {
+    opacity: 1;
   }
 
-  .loading-spinner {
-    animation: spin 1s linear infinite;
+  .close-btn {
+    opacity: 0.7;
   }
 
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  .loading-dot {
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* Tab scroll shadows */
+  .tabs-container {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0px,
+      black 10px,
+      black calc(100% - 10px),
+      transparent 100%
+    );
   }
 </style>
