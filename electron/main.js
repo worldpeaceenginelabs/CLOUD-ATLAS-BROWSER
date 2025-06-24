@@ -1,4 +1,4 @@
-import { app, BrowserWindow, BrowserView, ipcMain, dialog, shell } from 'electron';
+import { app, BrowserWindow, BrowserView, ipcMain, dialog, shell, Menu } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -97,14 +97,44 @@ function createWindow() {
     titleBarStyle: 'default'
   });
 
-  if (!isDev) {
+  // Set up menu for development
+  if (isDev) {
+    const template = [
+      {
+        label: 'View',
+        submenu: [
+          {
+            label: 'Toggle Developer Tools',
+            accelerator: 'F12',
+            click: () => {
+              if (mainWindow.webContents.isDevToolsOpened()) {
+                mainWindow.webContents.closeDevTools();
+              } else {
+                mainWindow.webContents.openDevTools({ mode: 'detach' });
+              }
+            }
+          },
+          {
+            label: 'Reload',
+            accelerator: 'CmdOrCtrl+R',
+            click: () => {
+              mainWindow.reload();
+            }
+          }
+        ]
+      }
+    ];
+    
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+  } else {
     mainWindow.setMenuBarVisibility(false);
   }
 
   if (isDev) {
     mainWindow.loadURL(`http://localhost:${port}`);
-    // Position dev tools to not interfere with tabs
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    // Don't auto-open dev tools - let user open them manually with F12
+    // mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
   }
@@ -124,6 +154,34 @@ function createWindow() {
       shell.openExternal(url);
     }
   });
+
+  // Handle dev tools properly
+  if (isDev) {
+    // Allow F12 to toggle dev tools
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.key === 'F12') {
+        if (mainWindow.webContents.isDevToolsOpened()) {
+          mainWindow.webContents.closeDevTools();
+        } else {
+          // Open dev tools in detached mode to avoid layout issues
+          mainWindow.webContents.openDevTools({ mode: 'detach' });
+        }
+      }
+    });
+
+    // Handle dev tools resize to not interfere with browser views
+    mainWindow.webContents.on('devtools-opened', () => {
+      console.log('Dev tools opened');
+      // Update browser view bounds when dev tools open
+      setTimeout(updateBrowserViewBounds, 100);
+    });
+
+    mainWindow.webContents.on('devtools-closed', () => {
+      console.log('Dev tools closed');
+      // Update browser view bounds when dev tools close
+      setTimeout(updateBrowserViewBounds, 100);
+    });
+  }
 
   // Handle all resize events
   mainWindow.on('resize', () => {
