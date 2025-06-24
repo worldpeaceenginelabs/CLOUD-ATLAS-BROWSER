@@ -45,6 +45,19 @@ html, body {
   padding: 0 8px;
 }
 
+.tabs-container {
+  display: flex;
+  align-items: flex-end;
+  flex: 0 1 auto; /* Don't grow, shrink if needed */
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin-right: 4px; /* Small gap before plus button */
+}
+
+.tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
 .tab {
   background: var(--chrome-tab-inactive);
   border: 1px solid var(--chrome-border);

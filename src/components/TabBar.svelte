@@ -129,9 +129,10 @@
 <style>
   .tabs-container {
     display: flex;
-    flex: 1;
+    flex: 0 1 auto;
     overflow-x: auto;
     scrollbar-width: none; /* Firefox */
+    margin-right: 4px;
   }
   
   .tabs-container::-webkit-scrollbar {

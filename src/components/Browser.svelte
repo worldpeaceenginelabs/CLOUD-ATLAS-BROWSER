@@ -13,10 +13,28 @@
   let activeTabId = null;
   let tabs = [];
 
-  // Subscribe to tab store
+  // Subscribe to tab store with debugging
   tabStore.subscribe(value => {
+    console.log('Tab store updated:', value);
     tabs = value.tabs;
-    activeTabId = value.activeTabId;
+    
+    // If activeTabId changed, handle the switch
+    if (activeTabId !== value.activeTabId) {
+      const oldActiveTabId = activeTabId;
+      activeTabId = value.activeTabId;
+      
+      console.log('Active tab changed from', oldActiveTabId, 'to', activeTabId);
+      
+      // Handle browser view switching when active tab changes
+      const newActiveTab = tabs.find(t => t.id === activeTabId);
+      if (newActiveTab && newActiveTab.viewId) {
+        window.electronAPI?.setActiveBrowserView(newActiveTab.viewId);
+      } else {
+        window.electronAPI?.setActiveBrowserView(null);
+      }
+    } else {
+      activeTabId = value.activeTabId;
+    }
   });
 
   onMount(() => {
@@ -63,6 +81,12 @@
           }
         }
       });
+
+      // Handle new tab requests from target="_blank" links
+      window.electronAPI.onCreateNewTabWithUrl((url) => {
+        const tabId = tabStore.createTab(url, 'Loading...');
+        handleWebContent(url, tabId);
+      });
     }
 
     // Initialize with one tab if none exist
@@ -79,6 +103,7 @@
       window.electronAPI.removeAllListeners('torrent-completed');
       window.electronAPI.removeAllListeners('torrent-error');
       window.electronAPI.removeAllListeners('web-navigation');
+      window.electronAPI.removeAllListeners('create-new-tab-with-url');
       
       // Close all browser views
       tabs.forEach(tab => {
@@ -91,6 +116,7 @@
 
   function handleNewTab() {
     const tabId = tabStore.createTab();
+    // The subscription will handle hiding browser views for new empty tabs
     addLog(`New tab created: ${tabId}`, 'info');
   }
 
@@ -104,13 +130,7 @@
   }
 
   function handleTabSelect(tabId) {
-    const tab = tabs.find(t => t.id === tabId);
-    if (tab && tab.viewId) {
-      window.electronAPI.setActiveBrowserView(tab.viewId);
-    } else {
-      // Hide any active browser view if switching to non-web tab
-      window.electronAPI.setActiveBrowserView(null);
-    }
+    // Just update the store - the subscription will handle browser view switching
     tabStore.setActiveTab(tabId);
   }
 
@@ -135,15 +155,17 @@
 
   function handleWebNavigation(url, action) {
     // Create browser view for web content
-    handleWebContent(url);
+    handleWebContent(url, activeTabId);
   }
 
-  async function handleWebContent(url) {
+  async function handleWebContent(url, tabId = null) {
+    const targetTabId = tabId || activeTabId;
+    
     try {
       // Create browser view
       const viewId = await window.electronAPI.createBrowserView(url);
       if (viewId) {
-        tabStore.updateTab(activeTabId, { 
+        tabStore.updateTab(targetTabId, { 
           url, 
           viewId,
           loading: true,
@@ -158,7 +180,7 @@
       }
     } catch (error) {
       addLog(`Web navigation error: ${error.message}`, 'error');
-      tabStore.updateTab(activeTabId, { loading: false });
+      tabStore.updateTab(targetTabId, { loading: false });
     }
   }
 

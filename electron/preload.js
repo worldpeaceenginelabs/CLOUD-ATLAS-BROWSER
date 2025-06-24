@@ -16,6 +16,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeTorrent: (magnetUri) => ipcRenderer.invoke('remove-torrent', magnetUri),
   getTorrentStats: () => ipcRenderer.invoke('get-torrent-stats'),
 
+  // Web content management
+  createBrowserView: (url) => ipcRenderer.invoke('create-browser-view', url),
+  setActiveBrowserView: (viewId) => ipcRenderer.invoke('set-active-browser-view', viewId),
+  closeBrowserView: (viewId) => ipcRenderer.invoke('close-browser-view', viewId),
+  navigateBrowserView: (viewId, url) => ipcRenderer.invoke('navigate-browser-view', viewId, url),
+
   // Event listeners
   onTorrentProgress: (callback) => {
     ipcRenderer.on('torrent-progress', (event, data) => callback(data));
@@ -37,14 +43,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('handle-magnet-link', (event, magnetUri) => callback(magnetUri));
   },
 
-  // Web content management
-  createBrowserView: (url) => ipcRenderer.invoke('create-browser-view', url),
-  setActiveBrowserView: (viewId) => ipcRenderer.invoke('set-active-browser-view', viewId),
-  closeBrowserView: (viewId) => ipcRenderer.invoke('close-browser-view', viewId),
-  navigateBrowserView: (viewId, url) => ipcRenderer.invoke('navigate-browser-view', viewId, url),
-
   onWebNavigation: (callback) => {
     ipcRenderer.on('web-navigation', (event, data) => callback(data));
+  },
+
+  onCreateNewTabWithUrl: (callback) => {
+    ipcRenderer.on('create-new-tab-with-url', (event, url) => callback(url));
   },
 
   // Cleanup
