@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   goForward: (viewId) => ipcRenderer.invoke('go-forward', viewId),
   getNavigationState: (viewId) => ipcRenderer.invoke('get-navigation-state', viewId),
 
+  // Process management
+  getTabProcessInfo: (viewId) => ipcRenderer.invoke('get-tab-process-info', viewId),
+  terminateTabProcess: (viewId) => ipcRenderer.invoke('terminate-tab-process', viewId),
+  reloadCrashedTab: (viewId, url) => ipcRenderer.invoke('reload-crashed-tab', viewId, url),
+  getAllProcessesInfo: () => ipcRenderer.invoke('get-all-processes-info'),
+
   // Event listeners
   onTorrentProgress: (callback) => {
     ipcRenderer.on('torrent-progress', (event, data) => callback(data));
@@ -58,6 +64,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   onFocusAddressBar: (callback) => {
     ipcRenderer.on('focus-address-bar', (event) => callback());
+  },
+
+  onTabProcessInfo: (callback) => {
+    ipcRenderer.on('tab-process-info', (event, data) => callback(data));
   },
 
   // Cleanup

@@ -1,5 +1,5 @@
 <script>
-  import { Download, File, Play, Pause, Trash2, ExternalLink } from 'lucide-svelte';
+  import { Download, File, Play, Pause, Trash2, ExternalLink, RefreshCw, X } from 'lucide-svelte';
   
   export let tab;
   export let active = false;
@@ -77,6 +77,64 @@
     if (audioExtensions.includes(ext)) return '🎵';
     if (imageExtensions.includes(ext)) return '🖼️';
     return '📄';
+  }
+
+  // Handle process-related actions
+  async function handleReloadCrashedTab() {
+    if (tab.viewId && tab.url && window.electronAPI) {
+      try {
+        const success = await window.electronAPI.reloadCrashedTab(tab.viewId, tab.url);
+        if (success) {
+          addLog(`Reloading crashed tab: ${tab.title || tab.url}`, 'info');
+        } else {
+          addLog(`Failed to reload crashed tab`, 'error');
+        }
+      } catch (error) {
+        addLog(`Error reloading crashed tab: ${error.message}`, 'error');
+      }
+    }
+  }
+
+  async function handleTerminateTab() {
+    if (tab.viewId && window.electronAPI) {
+      try {
+        const success = await window.electronAPI.terminateTabProcess(tab.viewId);
+        if (success) {
+          addLog(`Terminated tab process: ${tab.title || tab.url}`, 'info');
+        } else {
+          addLog(`Failed to terminate tab process`, 'error');
+        }
+      } catch (error) {
+        addLog(`Error terminating tab process: ${error.message}`, 'error');
+      }
+    }
+  }
+
+  function handleCloseTab() {
+    // Dispatch close event to parent
+    window.dispatchEvent(new CustomEvent('close-tab', { detail: tab.id }));
+  }
+
+  function getProcessStatusIcon(status) {
+    switch (status) {
+      case 'running': return '✅';
+      case 'crashed': return '💥';
+      case 'unresponsive': return '⏳';
+      case 'terminated': return '❌';
+      case 'pending': return '⚪';
+      default: return '❓';
+    }
+  }
+
+  function getProcessStatusColor(status) {
+    switch (status) {
+      case 'running': return 'text-green-600';
+      case 'crashed': return 'text-red-600';
+      case 'unresponsive': return 'text-orange-600';
+      case 'terminated': return 'text-gray-600';
+      case 'pending': return 'text-blue-600';
+      default: return 'text-gray-400';
+    }
   }
 </script>
 
@@ -217,16 +275,149 @@
 
   {:else if tab.viewId}
     <!-- Web Content (handled by BrowserView in main process) -->
-    <div class="web-content-placeholder h-full flex items-center justify-center bg-white">
-      {#if tab.loading}
+    <div class="web-content-placeholder h-full flex items-center justify-center bg-white relative">
+      {#if tab.processStatus === 'crashed'}
+        <!-- Crashed Tab Recovery -->
+        <div class="crashed-state text-center p-8">
+          <div class="text-6xl mb-4">💥</div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Tab Crashed</h2>
+          <p class="text-gray-600 mb-4">This tab has stopped working</p>
+          <div class="space-y-2">
+            <button 
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors flex items-center gap-2"
+              on:click={handleReloadCrashedTab}
+            >
+              <RefreshCw size={16} />
+              Reload Tab
+            </button>
+            <button 
+              class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors flex items-center gap-2 ml-2"
+              on:click={handleCloseTab}
+            >
+              <X size={16} />
+              Close Tab
+            </button>
+          </div>
+          {#if tab.processId}
+            <div class="mt-4 p-3 bg-gray-100 rounded text-sm text-gray-700">
+              <div class="font-medium mb-1">Process Information</div>
+              <div>Process ID: {tab.processId}</div>
+              {#if tab.statusMessage}
+                <div class="text-gray-600">{tab.statusMessage}</div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {:else if tab.processStatus === 'unresponsive'}
+        <!-- Unresponsive Tab -->
+        <div class="unresponsive-state text-center p-8">
+          <div class="text-6xl mb-4">⏳</div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Tab Not Responding</h2>
+          <p class="text-gray-600 mb-4">This tab is taking too long to respond</p>
+          <div class="space-y-2">
+            <button 
+              class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition-colors flex items-center gap-2"
+              on:click={handleTerminateTab}
+            >
+              <X size={16} />
+              Force Close
+            </button>
+            <button 
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors flex items-center gap-2 ml-2"
+              on:click={handleReloadCrashedTab}
+            >
+              <RefreshCw size={16} />
+              Reload
+            </button>
+          </div>
+          {#if tab.processId}
+            <div class="mt-4 p-3 bg-gray-100 rounded text-sm text-gray-700">
+              <div class="font-medium mb-1">Process Information</div>
+              <div>Process ID: {tab.processId}</div>
+              {#if tab.statusMessage}
+                <div class="text-gray-600">{tab.statusMessage}</div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {:else if tab.processStatus === 'terminated'}
+        <!-- Terminated Process -->
+        <div class="terminated-state text-center p-8">
+          <div class="text-6xl mb-4">❌</div>
+          <h2 class="text-xl font-bold text-gray-900 mb-2">Process Terminated</h2>
+          <p class="text-gray-600 mb-4">The tab process was terminated</p>
+          <div class="space-y-2">
+            <button 
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors flex items-center gap-2"
+              on:click={handleReloadCrashedTab}
+            >
+              <RefreshCw size={16} />
+              Restart Tab
+            </button>
+            <button 
+              class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors flex items-center gap-2 ml-2"
+              on:click={handleCloseTab}
+            >
+              <X size={16} />
+              Close Tab
+            </button>
+          </div>
+          {#if tab.processId}
+            <div class="mt-4 p-3 bg-gray-100 rounded text-sm text-gray-700">
+              <div class="font-medium mb-1">Process Information</div>
+              <div>Previous Process ID: {tab.processId}</div>
+              {#if tab.statusMessage}
+                <div class="text-gray-600">{tab.statusMessage}</div>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {:else if tab.loading}
+        <!-- Loading State -->
         <div class="loading-state text-center">
           <div class="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p class="text-gray-600">Loading {tab.url}...</p>
+          {#if tab.processId}
+            <p class="text-xs text-gray-500 mt-2">Process ID: {tab.processId}</p>
+          {/if}
+          {#if tab.statusMessage}
+            <p class="text-xs text-gray-600 mt-1">{tab.statusMessage}</p>
+          {/if}
         </div>
       {:else}
-        <!-- This space is occupied by the BrowserView -->
-        <div class="web-content-active">
+        <!-- Normal Web Content (BrowserView renders here) -->
+        <div class="web-content-active h-full w-full relative">
           <!-- BrowserView renders here -->
+          
+          <!-- Process Information Overlay -->
+          {#if tab.processId && tab.processStatus}
+            <div class="process-info absolute top-2 right-2 bg-black bg-opacity-70 text-white text-xs px-3 py-2 rounded-lg opacity-0 hover:opacity-100 transition-opacity duration-200 z-10">
+              <div class="flex items-center gap-2 mb-1">
+                <span class={getProcessStatusColor(tab.processStatus)}>
+                  {getProcessStatusIcon(tab.processStatus)}
+                </span>
+                <span class="font-medium">PID: {tab.processId}</span>
+              </div>
+              {#if tab.memoryInfo}
+                <div class="text-gray-300">
+                  Memory: {Math.round(tab.memoryInfo.workingSetSize / 1024 / 1024)}MB
+                </div>
+                {#if tab.memoryInfo.privateBytes}
+                  <div class="text-gray-300">
+                    Private: {Math.round(tab.memoryInfo.privateBytes / 1024 / 1024)}MB
+                  </div>
+                {/if}
+              {/if}
+              {#if tab.statusMessage}
+                <div class="text-gray-300 mt-1 text-xs">
+                  {tab.statusMessage}
+                </div>
+              {/if}
+              <div class="text-gray-400 mt-1 text-xs">
+                Status: {tab.processStatus}
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
@@ -320,7 +511,7 @@
             </div>
             <div class="flex items-start">
               <span class="text-blue-600 mr-2">•</span>
-              <span>All operations run securely in the main process</span>
+              <span>All operations run securely in isolated processes</span>
             </div>
           </div>
         </div>
@@ -367,5 +558,44 @@
   code {
     word-wrap: break-word;
     white-space: pre-wrap;
+  }
+
+  .process-info {
+    backdrop-filter: blur(4px);
+    max-width: 200px;
+  }
+
+  .crashed-state,
+  .unresponsive-state,
+  .terminated-state {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .web-content-active {
+    position: relative;
+  }
+
+  .loading-state {
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
   }
 </style>

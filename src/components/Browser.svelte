@@ -116,6 +116,71 @@
           addressBarComponent.focusInput();
         }
       });
+
+      // Handle tab process information
+      window.electronAPI.onTabProcessInfo((data) => {
+        const { viewId, type, processId, memoryInfo, message } = data;
+        const tab = tabs.find(t => t.viewId === viewId);
+        
+        if (tab) {
+          switch (type) {
+            case 'created':
+              tabStore.updateTab(tab.id, { 
+                processId,
+                processStatus: 'running',
+                statusMessage: message
+              });
+              addLog(`Tab process created: PID ${processId}`, 'info');
+              break;
+              
+            case 'crashed':
+              tabStore.updateTab(tab.id, { 
+                processStatus: 'crashed',
+                statusMessage: message,
+                loading: false
+              });
+              addLog(`Tab crashed: ${tab.title || tab.url}`, 'error');
+              break;
+              
+            case 'unresponsive':
+              tabStore.updateTab(tab.id, { 
+                processStatus: 'unresponsive',
+                statusMessage: message
+              });
+              addLog(`Tab became unresponsive: ${tab.title || tab.url}`, 'warning');
+              break;
+              
+            case 'responsive':
+              tabStore.updateTab(tab.id, { 
+                processStatus: 'running',
+                statusMessage: message
+              });
+              addLog(`Tab is responsive again: ${tab.title || tab.url}`, 'success');
+              break;
+              
+            case 'memory-update':
+              tabStore.updateTab(tab.id, { 
+                processId,
+                memoryInfo,
+                processStatus: 'running'
+              });
+              // Only log high memory usage
+              if (memoryInfo && memoryInfo.workingSetSize > 100 * 1024 * 1024) { // > 100MB
+                addLog(`High memory usage in tab: ${Math.round(memoryInfo.workingSetSize / 1024 / 1024)}MB`, 'warning');
+              }
+              break;
+              
+            case 'process-gone':
+              tabStore.updateTab(tab.id, { 
+                processStatus: 'terminated',
+                statusMessage: message,
+                loading: false
+              });
+              addLog(`Tab process terminated: ${tab.title || tab.url}`, 'error');
+              break;
+          }
+        }
+      });
     }
 
     // Initialize with one tab if none exist
@@ -134,6 +199,7 @@
       window.electronAPI.removeAllListeners('web-navigation');
       window.electronAPI.removeAllListeners('create-new-tab-with-url');
       window.electronAPI.removeAllListeners('focus-address-bar');
+      window.electronAPI.removeAllListeners('tab-process-info');
       
       // Close all browser views
       tabs.forEach(tab => {
@@ -320,6 +386,43 @@
   function handleNavigation(event) {
     const { action } = event.detail;
     addLog(`Navigation: ${action}`, 'info');
+  }
+
+  async function handleReloadCrashedTab(tabId) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab && tab.viewId && tab.url) {
+      try {
+        const success = await window.electronAPI.reloadCrashedTab(tab.viewId, tab.url);
+        if (success) {
+          tabStore.updateTab(tabId, { 
+            processStatus: 'running',
+            loading: true,
+            statusMessage: 'Reloading...'
+          });
+          addLog(`Reloading crashed tab: ${tab.title || tab.url}`, 'info');
+        } else {
+          addLog(`Failed to reload crashed tab: ${tab.title || tab.url}`, 'error');
+        }
+      } catch (error) {
+        addLog(`Error reloading crashed tab: ${error.message}`, 'error');
+      }
+    }
+  }
+
+  async function handleTerminateTab(tabId) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab && tab.viewId) {
+      try {
+        const success = await window.electronAPI.terminateTabProcess(tab.viewId);
+        if (success) {
+          addLog(`Terminated tab process: ${tab.title || tab.url}`, 'info');
+        } else {
+          addLog(`Failed to terminate tab process: ${tab.title || tab.url}`, 'error');
+        }
+      } catch (error) {
+        addLog(`Error terminating tab process: ${error.message}`, 'error');
+      }
+    }
   }
 </script>
 

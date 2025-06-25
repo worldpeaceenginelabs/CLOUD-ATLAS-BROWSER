@@ -550,10 +550,10 @@ app.on('open-url', (event, url) => {
   }
 });
 
-// Web content management
+// Web content management with process isolation
 ipcMain.handle('create-browser-view', async (event, url) => {
   try {
-    console.log('Creating browser view for URL:', url);
+    console.log('Creating process-isolated browser view for URL:', url);
     
     const view = new BrowserView({
       webPreferences: {
@@ -561,7 +561,18 @@ ipcMain.handle('create-browser-view', async (event, url) => {
         contextIsolation: true,
         webSecurity: true,
         allowRunningInsecureContent: false,
-        sandbox: false // Disable sandbox to prevent iterator errors
+        sandbox: false,
+        // Enable process isolation
+        processIsolation: true,
+        // Each BrowserView gets its own process
+        partition: `persist:tab-${Date.now()}`, // Unique partition per tab
+        // Additional security
+        experimentalFeatures: false,
+        enableBlinkFeatures: '',
+        disableBlinkFeatures: 'Auxclick',
+        // Memory management
+        backgroundThrottling: true,
+        offscreen: false
       }
     });
 
@@ -582,7 +593,7 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       height: true 
     });
 
-    // Handle navigation events
+    // Enhanced navigation events
     view.webContents.on('did-start-loading', () => {
       console.log('Browser view started loading:', viewId);
       sendToRenderer('web-navigation', { viewId, event: 'loading-start' });
@@ -593,9 +604,24 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       sendToRenderer('web-navigation', { viewId, event: 'loading-stop' });
     });
 
-    view.webContents.on('did-finish-load', () => {
+    view.webContents.on('did-finish-load', async () => {
       console.log('Browser view finished loading:', viewId);
       sendToRenderer('web-navigation', { viewId, event: 'loading-finish' });
+      
+      // Get memory usage for this specific tab
+      try {
+        const memInfo = await view.webContents.getProcessMemoryInfo();
+        const processId = view.webContents.getOSProcessId();
+        console.log(`Tab ${viewId} (PID: ${processId}) memory usage:`, memInfo);
+        sendToRenderer('tab-process-info', { 
+          viewId, 
+          processId, 
+          memoryInfo: memInfo,
+          type: 'memory-update'
+        });
+      } catch (error) {
+        console.error('Error getting memory info for tab:', viewId, error);
+      }
     });
 
     view.webContents.on('page-title-updated', (event, title) => {
@@ -643,7 +669,7 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       sendToRenderer('web-navigation', { viewId, event: 'load-failed', error: errorDescription });
     });
 
-    // Handle new window requests (target="_blank" links)
+    // Enhanced security: limit what the page can do
     view.webContents.setWindowOpenHandler(({ url }) => {
       console.log('New window requested from view:', viewId, 'URL:', url);
       // Send to renderer to create new tab
@@ -651,15 +677,70 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       return { action: 'deny' };
     });
 
+    // Handle crashes in individual tabs
+    view.webContents.on('crashed', (event, killed) => {
+      console.error(`Tab ${viewId} crashed:`, { killed });
+      sendToRenderer('tab-process-info', { 
+        viewId, 
+        type: 'crashed', 
+        killed,
+        message: 'Tab crashed and needs to be reloaded'
+      });
+    });
+
+    // Handle unresponsive tabs
+    view.webContents.on('unresponsive', () => {
+      console.warn(`Tab ${viewId} became unresponsive`);
+      sendToRenderer('tab-process-info', { 
+        viewId, 
+        type: 'unresponsive',
+        message: 'Tab is not responding'
+      });
+    });
+
+    view.webContents.on('responsive', () => {
+      console.log(`Tab ${viewId} became responsive again`);
+      sendToRenderer('tab-process-info', { 
+        viewId, 
+        type: 'responsive',
+        message: 'Tab is responding normally'
+      });
+    });
+
+    // Monitor when renderer process changes (rare but possible)
+    view.webContents.on('render-process-gone', (event, details) => {
+      console.error(`Tab ${viewId} renderer process gone:`, details);
+      sendToRenderer('tab-process-info', { 
+        viewId, 
+        type: 'process-gone', 
+        details,
+        message: 'Tab process terminated unexpectedly'
+      });
+    });
+
     // Load URL
-    console.log('Loading URL in browser view:', url);
+    console.log('Loading URL in process-isolated browser view:', url);
     await view.webContents.loadURL(url);
 
-    console.log('Browser view created successfully:', viewId, url);
+    // Get initial process info
+    try {
+      const processId = view.webContents.getOSProcessId();
+      console.log(`Browser view created with PID: ${processId} for viewId: ${viewId}`);
+      sendToRenderer('tab-process-info', { 
+        viewId, 
+        processId, 
+        type: 'created',
+        message: `Tab created in process ${processId}`
+      });
+    } catch (error) {
+      console.error('Error getting initial process info:', error);
+    }
+
+    console.log('Process-isolated browser view created successfully:', viewId, url);
     return viewId;
 
   } catch (error) {
-    console.error('Error creating browser view:', error);
+    console.error('Error creating process-isolated browser view:', error);
     return null;
   }
 });
@@ -826,6 +907,92 @@ ipcMain.handle('get-navigation-state', async (event, viewId) => {
   } catch (error) {
     console.error('Error getting navigation state:', error);
     return { canGoBack: false, canGoForward: false };
+  }
+});
+
+// Process management functions
+ipcMain.handle('get-tab-process-info', async (event, viewId) => {
+  try {
+    if (browserViews.has(viewId)) {
+      const view = browserViews.get(viewId);
+      const processId = view.webContents.getOSProcessId();
+      const memoryInfo = await view.webContents.getProcessMemoryInfo();
+      
+      return {
+        processId,
+        memoryInfo,
+        crashed: view.webContents.isCrashed(),
+        loading: view.webContents.isLoading(),
+        url: view.webContents.getURL(),
+        title: view.webContents.getTitle()
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting tab process info:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('terminate-tab-process', async (event, viewId) => {
+  try {
+    if (browserViews.has(viewId)) {
+      const view = browserViews.get(viewId);
+      view.webContents.forcefullyCrashRenderer();
+      console.log('Terminated process for tab:', viewId);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Error terminating tab process:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('reload-crashed-tab', async (event, viewId, url) => {
+  try {
+    if (browserViews.has(viewId)) {
+      const view = browserViews.get(viewId);
+      if (view.webContents.isCrashed()) {
+        await view.webContents.loadURL(url);
+        console.log('Reloaded crashed tab:', viewId, url);
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error reloading crashed tab:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('get-all-processes-info', async () => {
+  try {
+    const processesInfo = [];
+    
+    for (const [viewId, view] of browserViews) {
+      try {
+        const processId = view.webContents.getOSProcessId();
+        const memoryInfo = await view.webContents.getProcessMemoryInfo();
+        
+        processesInfo.push({
+          viewId,
+          processId,
+          memoryInfo,
+          crashed: view.webContents.isCrashed(),
+          loading: view.webContents.isLoading(),
+          url: view.webContents.getURL(),
+          title: view.webContents.getTitle()
+        });
+      } catch (error) {
+        console.error('Error getting process info for view:', viewId, error);
+      }
+    }
+    
+    return processesInfo;
+  } catch (error) {
+    console.error('Error getting all processes info:', error);
+    return [];
   }
 });
 

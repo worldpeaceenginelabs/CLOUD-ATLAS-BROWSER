@@ -20,7 +20,11 @@ function createTabStore() {
         favicon: null,
         canGoBack: false,
         canGoForward: false,
-        viewId: null
+        viewId: null,
+        processId: null,
+        processStatus: 'pending', // pending, running, crashed, unresponsive, terminated
+        memoryInfo: null,
+        statusMessage: null
       };
       
       update(state => {
