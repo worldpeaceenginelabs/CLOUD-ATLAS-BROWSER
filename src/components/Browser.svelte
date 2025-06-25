@@ -273,17 +273,29 @@
     const { url, action } = event.detail;
     
     try {
-      if (!url.trim()) return;
+      if (!url.trim() && action !== 'refresh') return;
 
       if (activeTabId) {
         if (action === 'refresh') {
           // Handle refresh action - reload current page
           const activeTab = tabs.find(t => t.id === activeTabId);
-          if (activeTab && activeTab.viewId) {
-            const view = window.electronAPI ? await window.electronAPI.navigateBrowserView(activeTab.viewId, activeTab.url) : null;
-            if (view !== false) {
-              addLog(`Page refreshed: ${activeTab.url}`, 'info');
+          if (activeTab && activeTab.viewId && activeTab.url && 
+              activeTab.url !== 'about:blank' && activeTab.url !== '') {
+            // Use the dedicated reload method
+            if (window.electronAPI) {
+              try {
+                const success = await window.electronAPI.reloadBrowserView(activeTab.viewId);
+                if (success) {
+                  addLog(`Page refreshed: ${activeTab.url}`, 'info');
+                } else {
+                  addLog('Cannot refresh: no content loaded', 'info');
+                }
+              } catch (error) {
+                addLog(`Refresh error: ${error.message}`, 'error');
+              }
             }
+          } else {
+            addLog('Nothing to refresh - tab is empty', 'info');
           }
         } else if (url.startsWith('magnet:')) {
           await handleMagnetLink(url);
@@ -464,9 +476,9 @@
   <TabBar 
     {tabs} 
     {activeTabId} 
-    on:newTab={handleNewTab}
-    on:closeTab={(e) => handleTabClose(e.detail)}
-    on:selectTab={(e) => handleTabSelect(e.detail)}
+    onNewTab={handleNewTab}
+    onCloseTab={(tabId) => handleTabClose(tabId)}
+    onSelectTab={(tabId) => handleTabSelect(tabId)}
   />
 
   <!-- Address Bar -->
@@ -477,9 +489,9 @@
     canGoBack={tabs.find(t => t.id === activeTabId)?.canGoBack || false}
     canGoForward={tabs.find(t => t.id === activeTabId)?.canGoForward || false}
     viewId={tabs.find(t => t.id === activeTabId)?.viewId || null}
-    on:submit={handleAddressSubmit}
-    on:send={handleSendAction}
-    on:navigation={handleNavigation}
+    onSubmit={(event) => handleAddressSubmit({ detail: event })}
+    onSend={handleSendAction}
+    onNavigation={(event) => handleNavigation({ detail: event })}
   />
 
   <!-- Content Area -->

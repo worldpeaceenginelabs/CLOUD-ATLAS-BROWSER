@@ -1,5 +1,4 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import { Search, Send, Shield, RefreshCw, ArrowLeft, ArrowRight, MoreVertical } from 'lucide-svelte';
 
   export let url = '';
@@ -7,9 +6,10 @@
   export let canGoBack = false;
   export let canGoForward = false;
   export let viewId = null;
+  export let onSubmit = () => {};
+  export let onSend = () => {};
+  export let onNavigation = () => {};
 
-  const dispatch = createEventDispatcher();
-  
   let inputValue = url;
   let inputElement;
 
@@ -29,15 +29,15 @@
       
       // Check if it's a magnet link
       if (processedUrl.startsWith('magnet:')) {
-        dispatch('submit', { url: processedUrl, action: 'torrent' });
+        onSubmit({ url: processedUrl, action: 'torrent' });
       } else if (processedUrl.startsWith('http://') || processedUrl.startsWith('https://')) {
-        dispatch('submit', { url: processedUrl, action: 'navigate' });
+        onSubmit({ url: processedUrl, action: 'navigate' });
       } else if (processedUrl.includes('.') && !processedUrl.includes(' ')) {
         // Assume it's a domain
-        dispatch('submit', { url: `https://${processedUrl}`, action: 'navigate' });
+        onSubmit({ url: `https://${processedUrl}`, action: 'navigate' });
       } else {
         // Search query
-        dispatch('submit', { 
+        onSubmit({ 
           url: `https://www.google.com/search?q=${encodeURIComponent(processedUrl)}`, 
           action: 'search' 
         });
@@ -52,26 +52,29 @@
   }
 
   function handleSendClick() {
-    dispatch('send');
+    onSend();
   }
 
   function handleRefresh() {
-    if (url) {
-      dispatch('submit', { url, action: 'refresh' });
+    // Only refresh if there's a valid URL and a browser view
+    if (url && url.trim() && url !== 'about:blank' && url !== '' && viewId) {
+      onSubmit({ url, action: 'refresh' });
+    } else {
+      console.log('Refresh button clicked but no valid content to refresh');
     }
   }
 
   async function handleBack() {
     if (canGoBack && viewId && window.electronAPI) {
       await window.electronAPI.goBack(viewId);
-      dispatch('navigation', { action: 'back' });
+      onNavigation({ action: 'back' });
     }
   }
 
   async function handleForward() {
     if (canGoForward && viewId && window.electronAPI) {
       await window.electronAPI.goForward(viewId);
-      dispatch('navigation', { action: 'forward' });
+      onNavigation({ action: 'forward' });
     }
   }
 

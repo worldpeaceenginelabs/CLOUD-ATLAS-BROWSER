@@ -250,25 +250,37 @@ function createWindow() {
     
     // Universal shortcuts (work in both dev and production)
     if (input.key === 'F5') {
-      // Reload the current website, not the electron app
+      // Only reload if there's an active website with actual content loaded
       if (currentViewId && browserViews.has(currentViewId)) {
         const view = browserViews.get(currentViewId);
-        if (input.control || input.meta) {
-          // Ctrl+F5 or Cmd+F5 for hard reload
-          view.webContents.reloadIgnoringCache();
+        const url = view.webContents.getURL();
+        
+        console.log('F5 pressed - checking URL:', url);
+        
+        // Only reload if the view has a real website URL loaded
+        if (url && 
+            url !== 'about:blank' && 
+            url !== '' && 
+            !url.startsWith('data:') && 
+            !url.startsWith('file://') &&
+            (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('magnet:'))) {
+          
+          if (input.control || input.meta) {
+            // Ctrl+F5 or Cmd+F5 for hard reload
+            view.webContents.reloadIgnoringCache();
+            console.log('Hard reloading website:', url);
+          } else {
+            // F5 for normal reload
+            view.webContents.reload();
+            console.log('Reloading website:', url);
+          }
         } else {
-          // F5 for normal reload
-          view.webContents.reload();
+          console.log('F5 pressed on empty/invalid content - ignoring (URL:', url, ')');
+          // Explicitly do nothing - no reload on empty tabs, even in dev mode
         }
-        console.log('Reloading current website in view:', currentViewId);
-      } else if (isDev) {
-        // Only reload electron app in development
-        if (input.control || input.meta) {
-          mainWindow.webContents.reloadIgnoringCache();
-        } else {
-          mainWindow.reload();
-        }
-        console.log('No active website, reloading Electron app (dev mode)');
+      } else {
+        console.log('F5 pressed but no active browser view - ignoring');
+        // Explicitly do nothing - never reload Electron app from F5
       }
       return;
     } 
@@ -728,21 +740,38 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       
       const navHistory = navigationHistory.get(viewId);
       
-      // If we're not at the end of history, remove forward entries
-      if (navHistory.currentIndex < navHistory.history.length - 1) {
-        navHistory.history = navHistory.history.slice(0, navHistory.currentIndex + 1);
+      // Only add to history if this is a user-initiated navigation, not back/forward
+      const isBackForwardNavigation = navHistory.history[navHistory.currentIndex] === url;
+      
+      if (!isBackForwardNavigation) {
+        // If we're not at the end of history, remove forward entries
+        if (navHistory.currentIndex < navHistory.history.length - 1) {
+          navHistory.history = navHistory.history.slice(0, navHistory.currentIndex + 1);
+        }
+        
+        // Add new entry
+        navHistory.history.push(url);
+        navHistory.currentIndex = navHistory.history.length - 1;
       }
       
-      // Add new entry
-      navHistory.history.push(url);
-      navHistory.currentIndex = navHistory.history.length - 1;
+      const canGoBack = navHistory.currentIndex > 0;
+      const canGoForward = navHistory.currentIndex < navHistory.history.length - 1;
+      
+      console.log('Navigation state:', {
+        viewId,
+        currentIndex: navHistory.currentIndex,
+        historyLength: navHistory.history.length,
+        canGoBack,
+        canGoForward,
+        url
+      });
       
       sendToRenderer('web-navigation', { 
         viewId, 
         event: 'navigate', 
         url,
-        canGoBack: navHistory.currentIndex > 0,
-        canGoForward: navHistory.currentIndex < navHistory.history.length - 1
+        canGoBack,
+        canGoForward
       });
     });
 
@@ -929,6 +958,7 @@ ipcMain.handle('go-back', async (event, viewId) => {
         const view = browserViews.get(viewId);
         await view.webContents.loadURL(url);
         
+        // Send updated navigation state
         sendToRenderer('web-navigation', { 
           viewId, 
           event: 'navigate', 
@@ -937,6 +967,7 @@ ipcMain.handle('go-back', async (event, viewId) => {
           canGoForward: navHistory.currentIndex < navHistory.history.length - 1
         });
         
+        console.log('Navigated back to:', url, 'canGoForward:', navHistory.currentIndex < navHistory.history.length - 1);
         return true;
       }
     }
@@ -958,6 +989,7 @@ ipcMain.handle('go-forward', async (event, viewId) => {
         const view = browserViews.get(viewId);
         await view.webContents.loadURL(url);
         
+        // Send updated navigation state
         sendToRenderer('web-navigation', { 
           viewId, 
           event: 'navigate', 
@@ -966,6 +998,7 @@ ipcMain.handle('go-forward', async (event, viewId) => {
           canGoForward: navHistory.currentIndex < navHistory.history.length - 1
         });
         
+        console.log('Navigated forward to:', url, 'canGoBack:', navHistory.currentIndex > 0);
         return true;
       }
     }
@@ -1044,6 +1077,29 @@ ipcMain.handle('reload-crashed-tab', async (event, viewId, url) => {
     return false;
   } catch (error) {
     console.error('Error reloading crashed tab:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('reload-browser-view', async (event, viewId) => {
+  try {
+    if (browserViews.has(viewId)) {
+      const view = browserViews.get(viewId);
+      const url = view.webContents.getURL();
+      
+      // Only reload if there's a valid URL
+      if (url && url !== 'about:blank' && !url.startsWith('data:')) {
+        view.webContents.reload();
+        console.log('Reloaded browser view:', viewId, url);
+        return true;
+      } else {
+        console.log('Cannot reload browser view - no valid URL:', viewId, url);
+        return false;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error reloading browser view:', error);
     return false;
   }
 });

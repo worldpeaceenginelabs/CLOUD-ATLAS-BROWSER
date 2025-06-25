@@ -1,32 +1,31 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
   import { X, Plus, Globe, Download, Lock } from 'lucide-svelte';
 
   export let tabs = [];
   export let activeTabId = null;
-
-  const dispatch = createEventDispatcher();
+  export let onNewTab = () => {};
+  export let onCloseTab = () => {};
+  export let onSelectTab = () => {};
 
   function handleNewTab() {
-    dispatch('newTab');
+    onNewTab();
   }
 
   function handleCloseTab(tabId, event) {
     event.stopPropagation();
-    dispatch('closeTab', tabId);
+    onCloseTab(tabId);
   }
 
   function handleSelectTab(tabId) {
-    dispatch('selectTab', tabId);
+    onSelectTab(tabId);
   }
 
   function getTabIcon(tab) {
     if (tab.url?.startsWith('magnet:')) {
       return Download;
     }
-    if (tab.url?.startsWith('https:')) {
-      return Lock;
-    }
+    // Always return Globe for web content, regardless of protocol
+    // The lock icon was confusing and the rotation was unnecessary
     return Globe;
   }
 
@@ -92,14 +91,14 @@
           <img 
             src={tab.favicon} 
             alt="Favicon" 
-            class="tab-favicon {tab.loading ? 'loading' : ''}"
+            class="tab-favicon"
             on:error={() => handleFaviconError(tab)}
           />
         {:else}
           <svelte:component 
             this={getTabIcon(tab)} 
             size={12} 
-            class="tab-icon {tab.loading ? 'animate-spin' : ''}" 
+            class="tab-icon" 
           />
         {/if}
 
@@ -215,10 +214,6 @@
     flex-shrink: 0;
     border-radius: 2px;
     object-fit: contain;
-  }
-
-  .tab-favicon.loading {
-    opacity: 0.6;
   }
 
   .tab-title {

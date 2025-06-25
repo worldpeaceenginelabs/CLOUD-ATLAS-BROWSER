@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTabProcessInfo: (viewId) => ipcRenderer.invoke('get-tab-process-info', viewId),
   terminateTabProcess: (viewId) => ipcRenderer.invoke('terminate-tab-process', viewId),
   reloadCrashedTab: (viewId, url) => ipcRenderer.invoke('reload-crashed-tab', viewId, url),
+  reloadBrowserView: (viewId) => ipcRenderer.invoke('reload-browser-view', viewId),
   getAllProcessesInfo: () => ipcRenderer.invoke('get-all-processes-info'),
 
   // Event listeners
