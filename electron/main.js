@@ -608,6 +608,15 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       console.log('Browser view finished loading:', viewId);
       sendToRenderer('web-navigation', { viewId, event: 'loading-finish' });
       
+      // Get the page title after a small delay to ensure it's fully loaded
+      setTimeout(() => {
+        const title = view.webContents.getTitle();
+        if (title && title.trim() && title !== 'Loading...' && title !== '') {
+          console.log('Page title after load delay:', viewId, title);
+          sendToRenderer('web-navigation', { viewId, event: 'title-updated', title });
+        }
+      }, 500); // Small delay to let the page title fully load
+      
       // Get memory usage for this specific tab
       try {
         const memInfo = await view.webContents.getProcessMemoryInfo();
@@ -626,7 +635,22 @@ ipcMain.handle('create-browser-view', async (event, url) => {
 
     view.webContents.on('page-title-updated', (event, title) => {
       console.log('Browser view title updated:', viewId, title);
-      sendToRenderer('web-navigation', { viewId, event: 'title-updated', title });
+      // Send title immediately when it's updated
+      if (title && title.trim() && title !== 'Loading...') {
+        sendToRenderer('web-navigation', { viewId, event: 'title-updated', title });
+      }
+    });
+
+    view.webContents.on('dom-ready', () => {
+      console.log('DOM ready for view:', viewId);
+      // Check for title when DOM is ready but don't override if we already have a good title
+      setTimeout(() => {
+        const title = view.webContents.getTitle();
+        if (title && title.trim() && title !== 'Loading...' && title !== '') {
+          console.log('Title from DOM ready (delayed):', viewId, title);
+          sendToRenderer('web-navigation', { viewId, event: 'title-updated', title });
+        }
+      }, 200); // Short delay for DOM to fully process
     });
 
     view.webContents.on('page-favicon-updated', (event, favicons) => {

@@ -74,9 +74,26 @@
             case 'loading-stop':
             case 'loading-finish':
               tabStore.updateTab(tab.id, { loading: false });
+              // Only set fallback title if we still have a generic title AND no real title is coming
+              setTimeout(() => {
+                const currentTab = tabs.find(t => t.id === tab.id);
+                if (currentTab && (currentTab.title === 'Loading...' || currentTab.title === 'New Tab')) {
+                  try {
+                    const url = new URL(currentTab.url);
+                    const hostname = url.hostname || 'Unknown';
+                    tabStore.updateTab(tab.id, { title: hostname });
+                  } catch {
+                    tabStore.updateTab(tab.id, { title: 'Page Loaded' });
+                  }
+                }
+              }, 1000); // Wait 1 second to see if a real title comes
               break;
             case 'title-updated':
-              tabStore.updateTab(tab.id, { title: data.title });
+              // Always update with the actual page title when available - this takes priority
+              if (data.title && data.title.trim() && data.title !== 'Loading...') {
+                console.log('Updating tab title to:', data.title);
+                tabStore.updateTab(tab.id, { title: data.title });
+              }
               break;
             case 'favicon-updated':
               tabStore.updateTab(tab.id, { favicon: data.favicon });
@@ -87,6 +104,7 @@
                 canGoBack: data.canGoBack || false,
                 canGoForward: data.canGoForward || false
               });
+              // Don't immediately update title on navigate - wait for page-title-updated
               break;
           }
         }
