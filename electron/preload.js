@@ -21,6 +21,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setActiveBrowserView: (viewId) => ipcRenderer.invoke('set-active-browser-view', viewId),
   closeBrowserView: (viewId) => ipcRenderer.invoke('close-browser-view', viewId),
   navigateBrowserView: (viewId, url) => ipcRenderer.invoke('navigate-browser-view', viewId, url),
+  
+  // Navigation
+  goBack: (viewId) => ipcRenderer.invoke('go-back', viewId),
+  goForward: (viewId) => ipcRenderer.invoke('go-forward', viewId),
+  getNavigationState: (viewId) => ipcRenderer.invoke('get-navigation-state', viewId),
 
   // Event listeners
   onTorrentProgress: (callback) => {
@@ -49,6 +54,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   onCreateNewTabWithUrl: (callback) => {
     ipcRenderer.on('create-new-tab-with-url', (event, url) => callback(url));
+  },
+
+  onFocusAddressBar: (callback) => {
+    ipcRenderer.on('focus-address-bar', (event) => callback());
   },
 
   // Cleanup

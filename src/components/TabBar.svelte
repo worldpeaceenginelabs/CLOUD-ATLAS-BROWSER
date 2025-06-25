@@ -68,6 +68,11 @@
       handleCloseTab(tabId, event);
     }
   }
+
+  function handleFaviconError(tab) {
+    // Remove favicon if it fails to load
+    tab.favicon = null;
+  }
 </script>
 
 <div class="tab-bar">
@@ -82,12 +87,21 @@
         tabindex="0"
         aria-selected={tab.id === activeTabId}
       >
-        <!-- Tab Icon -->
-        <svelte:component 
-          this={getTabIcon(tab)} 
-          size={12} 
-          class="tab-icon {tab.loading ? 'animate-spin' : ''}" 
-        />
+        <!-- Tab Icon/Favicon -->
+        {#if tab.favicon}
+          <img 
+            src={tab.favicon} 
+            alt="Favicon" 
+            class="tab-favicon {tab.loading ? 'loading' : ''}"
+            on:error={() => handleFaviconError(tab)}
+          />
+        {:else}
+          <svelte:component 
+            this={getTabIcon(tab)} 
+            size={12} 
+            class="tab-icon {tab.loading ? 'animate-spin' : ''}" 
+          />
+        {/if}
 
         <!-- Tab Title -->
         <span class="tab-title" title={getTabTitle(tab)}>
@@ -127,6 +141,18 @@
 </div>
 
 <style>
+  .tab-bar {
+    background: var(--chrome-bg);
+    border-bottom: 1px solid var(--chrome-border);
+    height: var(--tab-bar-height);
+    min-height: var(--tab-bar-height);
+    max-height: var(--tab-bar-height);
+    display: flex;
+    align-items: flex-end;
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+
   .tabs-container {
     display: flex;
     flex: 0 1 auto;
@@ -138,11 +164,61 @@
   .tabs-container::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Edge */
   }
+
+  .tab {
+    background: var(--chrome-tab-inactive);
+    border: 1px solid var(--chrome-border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    height: 32px;
+    min-width: 120px;
+    max-width: 240px;
+    margin-right: 1px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.1s ease;
+  }
+
+  .tab:hover {
+    background: var(--chrome-tab-hover);
+  }
+
+  .tab.active {
+    background: var(--chrome-tab);
+    border-color: var(--chrome-border);
+    z-index: 10;
+  }
+
+  .tab.active::before {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--chrome-tab);
+  }
   
   :global(.tab-icon) {
     margin-right: 6px;
     flex-shrink: 0;
     color: #5f6368;
+  }
+
+  .tab-favicon {
+    width: 12px;
+    height: 12px;
+    margin-right: 6px;
+    flex-shrink: 0;
+    border-radius: 2px;
+    object-fit: contain;
+  }
+
+  .tab-favicon.loading {
+    opacity: 0.6;
   }
 
   .tab-title {
@@ -154,6 +230,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     margin-right: 8px;
+    min-width: 0; /* Allow shrinking */
   }
 
   .tab.active .tab-title {
@@ -173,6 +250,53 @@
   }
 
   .close-btn {
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.1s ease;
     flex-shrink: 0;
+  }
+
+  .tab:hover .close-btn {
+    opacity: 1;
+  }
+
+  .close-btn:hover {
+    background: rgba(60, 64, 67, 0.1);
+  }
+
+  .new-tab-btn {
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    transition: background-color 0.1s ease;
+    flex-shrink: 0;
+  }
+
+  .new-tab-btn:hover {
+    background: rgba(60, 64, 67, 0.08);
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

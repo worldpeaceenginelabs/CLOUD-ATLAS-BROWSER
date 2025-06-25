@@ -4,6 +4,9 @@
 
   export let url = '';
   export let loading = false;
+  export let canGoBack = false;
+  export let canGoForward = false;
+  export let viewId = null;
 
   const dispatch = createEventDispatcher();
   
@@ -11,6 +14,14 @@
   let inputElement;
 
   $: inputValue = url;
+
+  // Focus the input when requested
+  export function focusInput() {
+    if (inputElement) {
+      inputElement.focus();
+      inputElement.select();
+    }
+  }
 
   function handleSubmit() {
     if (inputValue.trim()) {
@@ -50,14 +61,18 @@
     }
   }
 
-  function handleBack() {
-    // TODO: Implement navigation history
-    console.log('Back clicked');
+  async function handleBack() {
+    if (canGoBack && viewId && window.electronAPI) {
+      await window.electronAPI.goBack(viewId);
+      dispatch('navigation', { action: 'back' });
+    }
   }
 
-  function handleForward() {
-    // TODO: Implement navigation history
-    console.log('Forward clicked');
+  async function handleForward() {
+    if (canGoForward && viewId && window.electronAPI) {
+      await window.electronAPI.goForward(viewId);
+      dispatch('navigation', { action: 'forward' });
+    }
   }
 
   function selectAll() {
@@ -87,16 +102,18 @@
       <button 
         class="nav-btn"
         on:click={handleBack}
-        disabled={true}
+        disabled={!canGoBack}
         aria-label="Back"
+        title="Go back"
       >
         <ArrowLeft size={16} />
       </button>
       <button 
         class="nav-btn"
         on:click={handleForward}
-        disabled={true}
+        disabled={!canGoForward}
         aria-label="Forward"
+        title="Go forward"
       >
         <ArrowRight size={16} />
       </button>
@@ -104,12 +121,13 @@
         class="nav-btn"
         on:click={handleRefresh}
         aria-label="Refresh"
+        title="Reload page (F5)"
       >
         <RefreshCw size={16} class="{loading ? 'animate-spin' : ''}" />
       </button>
     </div>
 
-    <!-- Address input -->
+    <!-- Address input container - takes remaining space -->
     <div class="address-input-container">
       <!-- Security/Search indicator -->
       <div class="security-indicator">
@@ -120,7 +138,7 @@
         />
       </div>
 
-      <!-- URL input -->
+      <!-- URL input - expands to fill space -->
       <input 
         bind:this={inputElement}
         bind:value={inputValue}
@@ -137,6 +155,7 @@
         class="search-btn nav-btn"
         on:click={handleSubmit}
         aria-label="Go"
+        title="Go to address"
       >
         <Search size={16} />
       </button>
@@ -166,23 +185,56 @@
 </div>
 
 <style>
+  .address-bar {
+    background: var(--chrome-bg);
+    border-bottom: 1px solid var(--chrome-border);
+    height: var(--address-bar-height);
+    min-height: var(--address-bar-height);
+    max-height: var(--address-bar-height);
+    padding: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    width: 100%; /* Ensure full width */
+  }
+
   .address-bar-content {
     display: flex;
     align-items: center;
     gap: 8px;
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%; /* Take full width instead of max-width */
+    height: 32px;
   }
 
   .nav-buttons {
     display: flex;
     gap: 2px;
+    flex-shrink: 0;
   }
 
   .action-buttons {
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .address-input-container {
+    background: var(--chrome-address-bar);
+    border: 1px solid var(--chrome-border);
+    border-radius: 24px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    flex: 1; /* Take all remaining horizontal space */
+    min-width: 0; /* Allow shrinking */
+  }
+
+  .address-input-container:focus-within {
+    border-color: var(--chrome-blue);
+    box-shadow: 0 0 0 1px var(--chrome-blue);
   }
 
   .security-indicator {
@@ -192,8 +244,23 @@
     flex-shrink: 0;
   }
 
+  .url-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--chrome-text);
+    min-width: 0; /* Allow shrinking */
+  }
+
+  .url-input::placeholder {
+    color: var(--chrome-text-secondary);
+  }
+
   .search-btn {
     margin-left: 4px;
+    flex-shrink: 0;
   }
 
   .send-btn {
@@ -201,5 +268,46 @@
     align-items: center;
     gap: 4px;
     white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Navigation button styles */
+  .nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.1s ease;
+    flex-shrink: 0;
+  }
+
+  .nav-btn:hover:not(:disabled) {
+    background: rgba(60, 64, 67, 0.08);
+  }
+
+  .nav-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .send-btn {
+    background: var(--chrome-blue);
+    border: none;
+    border-radius: 4px;
+    color: white;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+  }
+
+  .send-btn:hover {
+    background: #1557b0;
   }
 </style>

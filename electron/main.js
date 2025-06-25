@@ -16,6 +16,7 @@ let mainWindow;
 let torrentClient;
 let browserViews = new Map(); // Store browser views for web content
 let currentViewId = null;
+let navigationHistory = new Map(); // Store navigation history for each view
 
 // Calculate the correct Y offset for browser views (tab bar + address bar)
 const TAB_BAR_HEIGHT = 36;
@@ -114,6 +115,14 @@ function createWindow() {
               }
             }
           },
+          {
+            label: 'Focus Address Bar',
+            accelerator: process.platform === 'darwin' ? 'Cmd+L' : 'Ctrl+L',
+            click: () => {
+              sendToRenderer('focus-address-bar');
+            }
+          },
+          { type: 'separator' },
           {
             label: 'Reload Page',
             accelerator: 'F5',
@@ -220,6 +229,9 @@ function createWindow() {
           }
           console.log('No active website, reloading Electron app');
         }
+      } else if ((input.control || input.meta) && input.key.toLowerCase() === 'l') {
+        // Ctrl+L or Cmd+L to focus address bar
+        sendToRenderer('focus-address-bar');
       }
     });
 
@@ -581,14 +593,49 @@ ipcMain.handle('create-browser-view', async (event, url) => {
       sendToRenderer('web-navigation', { viewId, event: 'loading-stop' });
     });
 
+    view.webContents.on('did-finish-load', () => {
+      console.log('Browser view finished loading:', viewId);
+      sendToRenderer('web-navigation', { viewId, event: 'loading-finish' });
+    });
+
     view.webContents.on('page-title-updated', (event, title) => {
       console.log('Browser view title updated:', viewId, title);
       sendToRenderer('web-navigation', { viewId, event: 'title-updated', title });
     });
 
+    view.webContents.on('page-favicon-updated', (event, favicons) => {
+      console.log('Browser view favicon updated:', viewId, favicons);
+      if (favicons && favicons.length > 0) {
+        sendToRenderer('web-navigation', { viewId, event: 'favicon-updated', favicon: favicons[0] });
+      }
+    });
+
     view.webContents.on('did-navigate', (event, url) => {
       console.log('Browser view navigated:', viewId, url);
-      sendToRenderer('web-navigation', { viewId, event: 'navigate', url });
+      
+      // Update navigation history
+      if (!navigationHistory.has(viewId)) {
+        navigationHistory.set(viewId, { history: [], currentIndex: -1 });
+      }
+      
+      const navHistory = navigationHistory.get(viewId);
+      
+      // If we're not at the end of history, remove forward entries
+      if (navHistory.currentIndex < navHistory.history.length - 1) {
+        navHistory.history = navHistory.history.slice(0, navHistory.currentIndex + 1);
+      }
+      
+      // Add new entry
+      navHistory.history.push(url);
+      navHistory.currentIndex = navHistory.history.length - 1;
+      
+      sendToRenderer('web-navigation', { 
+        viewId, 
+        event: 'navigate', 
+        url,
+        canGoBack: navHistory.currentIndex > 0,
+        canGoForward: navHistory.currentIndex < navHistory.history.length - 1
+      });
     });
 
     view.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
@@ -678,6 +725,11 @@ ipcMain.handle('close-browser-view', async (event, viewId) => {
       view.webContents.destroy();
       browserViews.delete(viewId);
       
+      // Clean up navigation history
+      if (navigationHistory.has(viewId)) {
+        navigationHistory.delete(viewId);
+      }
+      
       console.log('Browser view closed:', viewId);
       return true;
     }
@@ -699,6 +751,81 @@ ipcMain.handle('navigate-browser-view', async (event, viewId, url) => {
   } catch (error) {
     console.error('Error navigating browser view:', error);
     return false;
+  }
+});
+
+// Navigation history handlers
+ipcMain.handle('go-back', async (event, viewId) => {
+  try {
+    if (browserViews.has(viewId) && navigationHistory.has(viewId)) {
+      const navHistory = navigationHistory.get(viewId);
+      if (navHistory.currentIndex > 0) {
+        navHistory.currentIndex--;
+        const url = navHistory.history[navHistory.currentIndex];
+        
+        const view = browserViews.get(viewId);
+        await view.webContents.loadURL(url);
+        
+        sendToRenderer('web-navigation', { 
+          viewId, 
+          event: 'navigate', 
+          url,
+          canGoBack: navHistory.currentIndex > 0,
+          canGoForward: navHistory.currentIndex < navHistory.history.length - 1
+        });
+        
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error going back:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('go-forward', async (event, viewId) => {
+  try {
+    if (browserViews.has(viewId) && navigationHistory.has(viewId)) {
+      const navHistory = navigationHistory.get(viewId);
+      if (navHistory.currentIndex < navHistory.history.length - 1) {
+        navHistory.currentIndex++;
+        const url = navHistory.history[navHistory.currentIndex];
+        
+        const view = browserViews.get(viewId);
+        await view.webContents.loadURL(url);
+        
+        sendToRenderer('web-navigation', { 
+          viewId, 
+          event: 'navigate', 
+          url,
+          canGoBack: navHistory.currentIndex > 0,
+          canGoForward: navHistory.currentIndex < navHistory.history.length - 1
+        });
+        
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error('Error going forward:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('get-navigation-state', async (event, viewId) => {
+  try {
+    if (navigationHistory.has(viewId)) {
+      const navHistory = navigationHistory.get(viewId);
+      return {
+        canGoBack: navHistory.currentIndex > 0,
+        canGoForward: navHistory.currentIndex < navHistory.history.length - 1
+      };
+    }
+    return { canGoBack: false, canGoForward: false };
+  } catch (error) {
+    console.error('Error getting navigation state:', error);
+    return { canGoBack: false, canGoForward: false };
   }
 });
 

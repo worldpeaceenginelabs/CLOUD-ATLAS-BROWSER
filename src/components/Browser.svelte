@@ -12,6 +12,7 @@
 
   let activeTabId = null;
   let tabs = [];
+  let addressBarComponent;
 
   // Subscribe to tab store with debugging
   tabStore.subscribe(value => {
@@ -71,13 +72,21 @@
               tabStore.updateTab(tab.id, { loading: true });
               break;
             case 'loading-stop':
+            case 'loading-finish':
               tabStore.updateTab(tab.id, { loading: false });
               break;
             case 'title-updated':
               tabStore.updateTab(tab.id, { title: data.title });
               break;
+            case 'favicon-updated':
+              tabStore.updateTab(tab.id, { favicon: data.favicon });
+              break;
             case 'navigate':
-              tabStore.updateTab(tab.id, { url: data.url });
+              tabStore.updateTab(tab.id, { 
+                url: data.url,
+                canGoBack: data.canGoBack || false,
+                canGoForward: data.canGoForward || false
+              });
               break;
           }
         }
@@ -100,6 +109,13 @@
           tabStore.updateTab(tabId, { loading: false, title: 'Failed to load' });
         }
       });
+
+      // Handle address bar focus requests
+      window.electronAPI.onFocusAddressBar(() => {
+        if (addressBarComponent) {
+          addressBarComponent.focusInput();
+        }
+      });
     }
 
     // Initialize with one tab if none exist
@@ -117,6 +133,7 @@
       window.electronAPI.removeAllListeners('torrent-error');
       window.electronAPI.removeAllListeners('web-navigation');
       window.electronAPI.removeAllListeners('create-new-tab-with-url');
+      window.electronAPI.removeAllListeners('focus-address-bar');
       
       // Close all browser views
       tabs.forEach(tab => {
@@ -129,7 +146,14 @@
 
   function handleNewTab() {
     const tabId = tabStore.createTab();
-    // The subscription will handle hiding browser views for new empty tabs
+    
+    // Focus address bar for new tabs
+    setTimeout(() => {
+      if (addressBarComponent) {
+        addressBarComponent.focusInput();
+      }
+    }, 100);
+    
     addLog(`New tab created: ${tabId}`, 'info');
   }
 
@@ -190,7 +214,8 @@
       tabStore.updateTab(targetTabId, { 
         url, 
         loading: true,
-        title: 'Loading...'
+        title: 'Loading...',
+        favicon: null // Clear favicon when loading new page
       });
       
       // Create browser view
@@ -221,7 +246,11 @@
     } catch (error) {
       console.error('Web navigation error:', error);
       addLog(`Web navigation error: ${error.message}`, 'error');
-      tabStore.updateTab(targetTabId, { loading: false, title: 'Failed to load' });
+      tabStore.updateTab(targetTabId, { 
+        loading: false, 
+        title: 'Failed to load',
+        favicon: null 
+      });
     }
   }
 
@@ -287,6 +316,11 @@
       addLog(`Send action error: ${error.message}`, 'error');
     }
   }
+
+  function handleNavigation(event) {
+    const { action } = event.detail;
+    addLog(`Navigation: ${action}`, 'info');
+  }
 </script>
 
 <!-- Browser Container -->
@@ -302,10 +336,15 @@
 
   <!-- Address Bar -->
   <AddressBar 
+    bind:this={addressBarComponent}
     url={tabs.find(t => t.id === activeTabId)?.url || ''}
     loading={tabs.find(t => t.id === activeTabId)?.loading || false}
+    canGoBack={tabs.find(t => t.id === activeTabId)?.canGoBack || false}
+    canGoForward={tabs.find(t => t.id === activeTabId)?.canGoForward || false}
+    viewId={tabs.find(t => t.id === activeTabId)?.viewId || null}
     on:submit={handleAddressSubmit}
     on:send={handleSendAction}
+    on:navigation={handleNavigation}
   />
 
   <!-- Content Area -->

@@ -17,7 +17,10 @@ function createTabStore() {
         url,
         title,
         loading: false,
-        favicon: null
+        favicon: null,
+        canGoBack: false,
+        canGoForward: false,
+        viewId: null
       };
       
       update(state => {
