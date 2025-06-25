@@ -102,6 +102,33 @@ function createWindow() {
   if (isDev) {
     const template = [
       {
+        label: 'File',
+        submenu: [
+          {
+            label: 'New Tab',
+            accelerator: process.platform === 'darwin' ? 'Cmd+T' : 'Ctrl+T',
+            click: () => {
+              sendToRenderer('new-tab');
+            }
+          },
+          {
+            label: 'Close Tab',
+            accelerator: process.platform === 'darwin' ? 'Cmd+W' : 'Ctrl+W',
+            click: () => {
+              sendToRenderer('close-current-tab');
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Quit',
+            accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+            click: () => {
+              app.quit();
+            }
+          }
+        ]
+      },
+      {
         label: 'View',
         submenu: [
           {
@@ -197,45 +224,76 @@ function createWindow() {
     }
   });
 
-  // Handle dev tools and page reload properly
-  if (isDev) {
-    // Allow F12 to toggle dev tools and F5 to reload current page
-    mainWindow.webContents.on('before-input-event', (event, input) => {
-      if (input.key === 'F12') {
-        if (mainWindow.webContents.isDevToolsOpened()) {
-          mainWindow.webContents.closeDevTools();
-        } else {
-          // Open dev tools in detached mode to avoid layout issues
-          mainWindow.webContents.openDevTools({ mode: 'detach' });
-        }
-      } else if (input.key === 'F5') {
-        // Reload the current website, not the electron app
-        if (currentViewId && browserViews.has(currentViewId)) {
-          const view = browserViews.get(currentViewId);
-          if (input.control || input.meta) {
-            // Ctrl+F5 or Cmd+F5 for hard reload
-            view.webContents.reloadIgnoringCache();
-          } else {
-            // F5 for normal reload
-            view.webContents.reload();
-          }
-          console.log('Reloading current website in view:', currentViewId);
-        } else {
-          // No active browser view, reload the electron app (for development)
-          if (input.control || input.meta) {
-            mainWindow.webContents.reloadIgnoringCache();
-          } else {
-            mainWindow.reload();
-          }
-          console.log('No active website, reloading Electron app');
-        }
-      } else if ((input.control || input.meta) && input.key.toLowerCase() === 'l') {
-        // Ctrl+L or Cmd+L to focus address bar
-        sendToRenderer('focus-address-bar');
-      }
-    });
+  // Handle dev tools and keyboard shortcuts
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    // Prevent default handling for our custom shortcuts
+    const isOurShortcut = (
+      (input.key === 'F12' && isDev) ||
+      (input.key === 'F5') ||
+      ((input.control || input.meta) && ['l', 't', 'w'].includes(input.key.toLowerCase()))
+    );
 
-    // Handle dev tools resize to not interfere with browser views
+    if (isOurShortcut) {
+      event.preventDefault(); // Prevent default browser behavior
+    }
+
+    // Development-only shortcuts
+    if (isDev && input.key === 'F12') {
+      if (mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.closeDevTools();
+      } else {
+        // Open dev tools in detached mode to avoid layout issues
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+      }
+      return;
+    }
+    
+    // Universal shortcuts (work in both dev and production)
+    if (input.key === 'F5') {
+      // Reload the current website, not the electron app
+      if (currentViewId && browserViews.has(currentViewId)) {
+        const view = browserViews.get(currentViewId);
+        if (input.control || input.meta) {
+          // Ctrl+F5 or Cmd+F5 for hard reload
+          view.webContents.reloadIgnoringCache();
+        } else {
+          // F5 for normal reload
+          view.webContents.reload();
+        }
+        console.log('Reloading current website in view:', currentViewId);
+      } else if (isDev) {
+        // Only reload electron app in development
+        if (input.control || input.meta) {
+          mainWindow.webContents.reloadIgnoringCache();
+        } else {
+          mainWindow.reload();
+        }
+        console.log('No active website, reloading Electron app (dev mode)');
+      }
+      return;
+    } 
+    
+    if ((input.control || input.meta) && input.key.toLowerCase() === 'l') {
+      // Ctrl+L or Cmd+L to focus address bar
+      sendToRenderer('focus-address-bar');
+      return;
+    } 
+    
+    if ((input.control || input.meta) && input.key.toLowerCase() === 't') {
+      // Ctrl+T or Cmd+T to open new tab
+      sendToRenderer('new-tab');
+      return;
+    } 
+    
+    if ((input.control || input.meta) && input.key.toLowerCase() === 'w') {
+      // Ctrl+W or Cmd+W to close current tab
+      sendToRenderer('close-current-tab');
+      return;
+    }
+  });
+
+  // Handle dev tools resize to not interfere with browser views
+  if (isDev) {
     mainWindow.webContents.on('devtools-opened', () => {
       console.log('Dev tools opened');
       // Update browser view bounds when dev tools open

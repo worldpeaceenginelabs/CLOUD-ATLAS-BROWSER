@@ -135,6 +135,18 @@
         }
       });
 
+      // Handle new tab keyboard shortcut
+      window.electronAPI.onNewTab(() => {
+        handleNewTab();
+      });
+
+      // Handle close current tab keyboard shortcut
+      window.electronAPI.onCloseCurrentTab(() => {
+        if (activeTabId) {
+          handleTabClose(activeTabId);
+        }
+      });
+
       // Handle tab process information
       window.electronAPI.onTabProcessInfo((data) => {
         const { viewId, type, processId, memoryInfo, message } = data;
@@ -217,6 +229,8 @@
       window.electronAPI.removeAllListeners('web-navigation');
       window.electronAPI.removeAllListeners('create-new-tab-with-url');
       window.electronAPI.removeAllListeners('focus-address-bar');
+      window.electronAPI.removeAllListeners('new-tab');
+      window.electronAPI.removeAllListeners('close-current-tab');
       window.electronAPI.removeAllListeners('tab-process-info');
       
       // Close all browser views

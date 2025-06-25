@@ -66,6 +66,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('focus-address-bar', (event) => callback());
   },
 
+  onNewTab: (callback) => {
+    ipcRenderer.on('new-tab', (event) => callback());
+  },
+
+  onCloseCurrentTab: (callback) => {
+    ipcRenderer.on('close-current-tab', (event) => callback());
+  },
+
   onTabProcessInfo: (callback) => {
     ipcRenderer.on('tab-process-info', (event, data) => callback(data));
   },
