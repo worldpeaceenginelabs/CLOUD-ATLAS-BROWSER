@@ -121,6 +121,17 @@ ipcMain.handle('select-file', () => fileManager.selectFile());
 ipcMain.handle('show-save-dialog', (event, defaultName) => fileManager.showSaveDialog(defaultName));
 ipcMain.handle('get-download-path', () => fileManager.getDefaultDownloadPath());
 
+// IPC Handlers - File System Operations  
+ipcMain.handle('path-exists', async (event, filePath) => {
+  try {
+    const fs = await import('fs/promises');
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+});
+
 // IPC Handlers - WebTorrent Operations
 ipcMain.handle('add-torrent', (event, magnetUri) => torrentManager.addTorrent(magnetUri));
 ipcMain.handle('seed-file', (event, filePath) => torrentManager.seedFile(filePath));

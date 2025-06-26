@@ -1,3 +1,7 @@
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
 // IndexedDB wrapper for persisting torrent and UI state
 class PersistenceStore {
   constructor() {
@@ -24,6 +28,7 @@ class PersistenceStore {
         if (!db.objectStoreNames.contains('torrents')) {
           const torrentStore = db.createObjectStore('torrents', { keyPath: 'id' });
           torrentStore.createIndex('magnetUri', 'magnetUri', { unique: true });
+          torrentStore.createIndex('infoHash', 'infoHash', { unique: true }); // NEW: Index by hash
           torrentStore.createIndex('status', 'status', { unique: false });
         }
         
@@ -35,9 +40,55 @@ class PersistenceStore {
     });
   }
 
-  // Save torrent data
-  async saveTorrent(torrent) {
+  // Extract info hash from magnet URI
+  extractInfoHash(magnetUri) {
+    try {
+      const match = magnetUri.match(/[?&]xt=urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/);
+      return match ? match[1].toLowerCase() : null;
+    } catch (error) {
+      console.error('Error extracting info hash:', error);
+      return null;
+    }
+  }
+
+  // Check if torrent exists by hash
+  async torrentExistsByHash(infoHash) {
     if (!this.db) await this.init();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction(['torrents'], 'readonly');
+      const store = transaction.objectStore('torrents');
+      const index = store.index('infoHash');
+      const request = index.get(infoHash.toLowerCase());
+      
+      request.onsuccess = () => {
+        resolve(!!request.result);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // Save torrent data with deduplication (only for new torrents)
+  async saveTorrent(torrent, isNewTorrent = false) {
+    if (!this.db) await this.init();
+    
+    // Extract and add info hash if not present
+    if (!torrent.infoHash && torrent.magnetUri) {
+      torrent.infoHash = this.extractInfoHash(torrent.magnetUri);
+    }
+
+    if (!torrent.infoHash) {
+      throw new Error('Cannot save torrent without valid info hash');
+    }
+
+    // Only check for duplicates when adding NEW torrents
+    if (isNewTorrent) {
+      const exists = await this.torrentExistsByHash(torrent.infoHash);
+      if (exists) {
+        console.log('Torrent already exists in database, skipping save:', torrent.name);
+        return false; // Signal that torrent was not saved
+      }
+    }
     
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['torrents'], 'readwrite');
@@ -47,15 +98,24 @@ class PersistenceStore {
       const persistentTorrent = {
         id: torrent.id,
         magnetUri: torrent.magnetUri,
+        infoHash: torrent.infoHash,
         name: torrent.name,
         status: torrent.status,
         files: torrent.files,
         dateAdded: torrent.dateAdded,
+        actualDownloadPath: torrent.actualDownloadPath || null, // Store the REAL path from download event
         // Don't save progress/speed data - these are ephemeral
       };
       
       const request = store.put(persistentTorrent);
-      request.onsuccess = () => resolve();
+      request.onsuccess = () => {
+        if (isNewTorrent) {
+          console.log('New torrent saved to database:', torrent.name);
+        } else {
+          console.log('Torrent updated in database:', torrent.name, 'status:', torrent.status);
+        }
+        resolve(true);
+      };
       request.onerror = () => reject(request.error);
     });
   }

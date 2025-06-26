@@ -8,7 +8,7 @@
 
   let torrents = [];
   let sidebarOpen = false;
-  let sidebarWidth = 350;
+  let sidebarWidth = 500;
   let resizing = false;
   let sidebarElement;
 
@@ -27,15 +27,25 @@
       torrentStore.setSidebarOpen(savedSidebarOpen);
       torrentStore.setSidebarWidth(savedSidebarWidth);
       
+      // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
       savedTorrents.forEach(torrent => {
-        torrentStore.addTorrent(torrent.magnetUri, torrent);
-        torrentStore.updateTorrent(torrent.id, {
-          name: torrent.name,
-          status: torrent.status,
-          files: torrent.files,
-          dateAdded: new Date(torrent.dateAdded)
-        });
+        // Check for duplicates before adding
+        if (!torrentStore.torrentExists(torrent.magnetUri)) {
+          const torrentId = torrentStore.addTorrent(torrent.magnetUri, torrent);
+          if (torrentId) {
+            // Update the added torrent with saved state
+            torrentStore.updateTorrent(torrentId, {
+              name: torrent.name,
+              status: torrent.status,
+              files: torrent.files,
+              dateAdded: new Date(torrent.dateAdded),
+              actualDownloadPath: torrent.actualDownloadPath
+            });
+          }
+        } else {
+          console.log('Skipping duplicate torrent on load:', torrent.name);
+        }
       });
 
       if (savedTorrents.length > 0) {
@@ -100,7 +110,7 @@
         const success = await window.electronAPI.pauseTorrent(torrent.magnetUri);
         if (success) {
           torrentStore.pauseTorrent(torrent.id);
-          await persistenceStore.saveTorrent({ ...torrent, status: 'paused' });
+          await persistenceStore.saveTorrent({ ...torrent, status: 'paused' }, false); // ← FALSE = update existing
           addLog(`Paused: ${torrent.name}`, 'info');
         } else {
           addLog(`Failed to pause: ${torrent.name}`, 'error');
@@ -117,7 +127,7 @@
         const torrentInfo = await window.electronAPI.addTorrent(torrent.magnetUri);
         if (torrentInfo) {
           torrentStore.resumeTorrent(torrent.id);
-          await persistenceStore.saveTorrent({ ...torrent, status: 'downloading' });
+          await persistenceStore.saveTorrent({ ...torrent, status: 'downloading' }, false); // ← FALSE = update existing
           addLog(`Resumed: ${torrent.name}`, 'info');
         } else {
           addLog(`Failed to resume: ${torrent.name}`, 'error');

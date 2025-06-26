@@ -6,7 +6,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectFile: () => ipcRenderer.invoke('select-file'),
   showSaveDialog: (filename) => ipcRenderer.invoke('show-save-dialog', filename),
   getDownloadPath: () => ipcRenderer.invoke('get-download-path'),
-
+  pathExists: (filePath) => ipcRenderer.invoke('path-exists', filePath),
+  
   // WebTorrent operations (all happen in main process)
   addTorrent: (magnetUri) => ipcRenderer.invoke('add-torrent', magnetUri),
   seedFile: (filePath) => ipcRenderer.invoke('seed-file', filePath),

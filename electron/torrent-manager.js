@@ -109,7 +109,10 @@ class TorrentManager {
             uploadSpeed: torrent.uploadSpeed,
             peers: torrent.numPeers,
             downloaded: torrent.downloaded,
-            uploaded: torrent.uploaded
+            uploaded: torrent.uploaded,
+            // SEND THE RELIABLE PATH to the renderer!
+            actualDownloadPath: torrent.name && torrent.path ? 
+              path.join(torrent.path, torrent.name) : null
           };
           
           this.sendToRenderer('torrent-progress', progressData);

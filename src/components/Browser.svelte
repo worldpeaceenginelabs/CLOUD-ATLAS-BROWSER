@@ -60,6 +60,15 @@
       window.electronAPI.onTorrentProgress((data) => {
         // Update torrent store with progress
         torrentStore.updateProgress(data.magnetUri, data);
+        
+        // Save updated progress to persistence (updates to existing torrents)
+        setTimeout(async () => {
+          const torrent = torrentStore.findTorrentByMagnet(data.magnetUri);
+          if (torrent) {
+            const { persistenceStore } = await import('../stores/persistenceStore.js');
+            await persistenceStore.saveTorrent(torrent, false); // ← FALSE = update existing, no duplicate check
+          }
+        }, 1000); // Debounce saves
       });
 
       window.electronAPI.onTorrentCompleted((data) => {
@@ -382,26 +391,43 @@
 
   async function handleMagnetLink(magnetUri) {
     try {
-      addLog(`Adding torrent: ${magnetUri.substring(0, 50)}...`, 'info');
+      addLog(`Processing magnet link: ${magnetUri.substring(0, 50)}...`, 'info');
+      
+      // Check for duplicates first
+      if (torrentStore.torrentExists(magnetUri)) {
+        addLog(`Torrent already exists - skipping duplicate`, 'warning');
+        return;
+      }
       
       // Add torrent via main process
       const torrentInfo = await window.electronAPI.addTorrent(magnetUri);
       
       if (torrentInfo) {
-        // Add to torrent store
+        // Add to torrent store (with built-in deduplication)
         const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo);
-        addLog(`Torrent added: ${torrentInfo.name}`, 'success');
         
-        // Save to persistence
-        const { persistenceStore } = await import('../stores/persistenceStore.js');
-        await persistenceStore.saveTorrent({
-          id: torrentId,
-          magnetUri,
-          name: torrentInfo.name,
-          status: 'downloading',
-          files: torrentInfo.files,
-          dateAdded: new Date()
-        });
+        if (torrentId) {
+          addLog(`Torrent added: ${torrentInfo.name}`, 'success');
+          
+          // Save to persistence (with deduplication for NEW torrents)
+          const { persistenceStore } = await import('../stores/persistenceStore.js');
+          const saved = await persistenceStore.saveTorrent({
+            id: torrentId,
+            magnetUri,
+            infoHash: torrentStore.extractInfoHash(magnetUri),
+            name: torrentInfo.name,
+            status: 'downloading',
+            files: torrentInfo.files,
+            dateAdded: new Date(),
+            actualDownloadPath: null // Will be set when download event fires
+          }, true); // ← TRUE = this is a new torrent, check for duplicates
+          
+          if (!saved) {
+            addLog(`Torrent already in database - skipping save`, 'info');
+          }
+        } else {
+          addLog(`Duplicate torrent detected - not added to store`, 'info');
+        }
       } else {
         throw new Error('Failed to add torrent');
       }

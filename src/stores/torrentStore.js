@@ -2,6 +2,17 @@ import { writable } from 'svelte/store';
 
 let torrentIdCounter = 0;
 
+// Extract info hash from magnet URI
+function extractInfoHash(magnetUri) {
+  try {
+    const match = magnetUri.match(/[?&]xt=urn:btih:([a-fA-F0-9]{40}|[a-zA-Z2-7]{32})/);
+    return match ? match[1].toLowerCase() : null;
+  } catch (error) {
+    console.error('Error extracting info hash:', error);
+    return null;
+  }
+}
+
 function createTorrentStore() {
   const { subscribe, set, update } = writable({
     torrents: [], // Array of torrent objects
@@ -12,34 +23,61 @@ function createTorrentStore() {
   return {
     subscribe,
     
-    // Add a new torrent
+    // Add a new torrent with deduplication
     addTorrent: (magnetUri, torrentInfo = null) => {
-      const newTorrent = {
-        id: ++torrentIdCounter,
-        magnetUri,
-        name: torrentInfo?.name || 'Loading...',
-        status: 'downloading', // downloading, paused, completed, error
-        progress: 0,
-        downloadSpeed: 0,
-        uploadSpeed: 0,
-        peers: 0,
-        downloaded: 0,
-        uploaded: 0,
-        files: torrentInfo?.files || [],
-        dateAdded: new Date(),
-        error: null,
-        // Additional metadata
-        size: 0,
-        eta: null
-      };
+      const infoHash = extractInfoHash(magnetUri);
       
-      update(state => ({
-        ...state,
-        torrents: [...state.torrents, newTorrent],
-        sidebarOpen: true // Auto-open sidebar when adding torrent
-      }));
+      if (!infoHash) {
+        console.error('Invalid magnet URI - cannot extract info hash');
+        return null;
+      }
+
+      // Check for duplicates
+      let isDuplicate = false;
+      update(state => {
+        const existing = state.torrents.find(t => 
+          extractInfoHash(t.magnetUri) === infoHash
+        );
+        
+        if (existing) {
+          isDuplicate = true;
+          console.log('Torrent already exists:', existing.name || magnetUri);
+          return state; // No changes
+        }
+
+        const newTorrent = {
+          id: ++torrentIdCounter,
+          magnetUri,
+          infoHash, // Store the extracted hash
+          name: torrentInfo?.name || 'Loading...',
+          status: 'downloading', // downloading, paused, completed, error
+          progress: 0,
+          downloadSpeed: 0,
+          uploadSpeed: 0,
+          peers: 0,
+          downloaded: 0,
+          uploaded: 0,
+          files: torrentInfo?.files || [],
+          dateAdded: new Date(),
+          error: null,
+          actualDownloadPath: null, // Will be set when download event fires
+          // Additional metadata
+          size: 0,
+          eta: null
+        };
+        
+        return {
+          ...state,
+          torrents: [...state.torrents, newTorrent],
+          sidebarOpen: true // Auto-open sidebar when adding torrent
+        };
+      });
       
-      return newTorrent.id;
+      if (isDuplicate) {
+        return null; // Signal that torrent was not added
+      }
+      
+      return torrentIdCounter; // Return the new torrent ID
     },
     
     // Remove a torrent
@@ -69,6 +107,29 @@ function createTorrentStore() {
       });
       return result;
     },
+
+    // Find torrent by info hash
+    findTorrentByHash: (infoHash) => {
+      let result = null;
+      update(state => {
+        result = state.torrents.find(t => t.infoHash === infoHash.toLowerCase());
+        return state;
+      });
+      return result;
+    },
+
+    // Check if torrent exists by hash
+    torrentExists: (magnetUri) => {
+      const infoHash = extractInfoHash(magnetUri);
+      if (!infoHash) return false;
+      
+      let exists = false;
+      update(state => {
+        exists = state.torrents.some(t => t.infoHash === infoHash);
+        return state;
+      });
+      return exists;
+    },
     
     // Update torrent progress from WebTorrent events
     updateProgress: (magnetUri, progressData) => {
@@ -83,6 +144,8 @@ function createTorrentStore() {
             peers: progressData.peers || 0,
             downloaded: progressData.downloaded || 0,
             uploaded: progressData.uploaded || 0,
+            // Store the ACTUAL reliable path info if provided
+            actualDownloadPath: progressData.actualDownloadPath || torrent.actualDownloadPath,
             status: progressData.progress >= 1 ? 'completed' : 'downloading'
           } : torrent
         )
@@ -184,7 +247,20 @@ function createTorrentStore() {
         ...state,
         torrents: []
       }));
-    }
+    },
+
+    // Get all torrents (for external access)
+    getAllTorrents: () => {
+      let result = [];
+      update(state => {
+        result = [...state.torrents];
+        return state;
+      });
+      return result;
+    },
+
+    // Utility: Extract info hash from magnet URI (exposed for external use)
+    extractInfoHash
   };
 }
 
