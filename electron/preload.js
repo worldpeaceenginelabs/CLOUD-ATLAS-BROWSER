@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   seedFile: (filePath) => ipcRenderer.invoke('seed-file', filePath),
   downloadFile: (magnetUri, fileName) => ipcRenderer.invoke('download-file', magnetUri, fileName),
   pauseTorrent: (magnetUri) => ipcRenderer.invoke('pause-torrent', magnetUri),
-  resumeTorrent: (magnetUri) => ipcRenderer.invoke('resume-torrent', magnetUri),
+  
   removeTorrent: (magnetUri) => ipcRenderer.invoke('remove-torrent', magnetUri),
   getTorrentStats: () => ipcRenderer.invoke('get-torrent-stats'),
 

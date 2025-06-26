@@ -201,13 +201,22 @@ class TorrentManager {
     }
   }
 
-  // Pause a torrent
+  // Pause a torrent (UPDATED - uses client.remove with destroyStore: false)
   async pauseTorrent(magnetUri) {
     try {
       const torrent = this.client.get(magnetUri);
       if (torrent) {
-        torrent.pause();
-        return true;
+        return new Promise((resolve) => {
+          this.client.remove(magnetUri, { destroyStore: false }, (err) => {
+            if (!err) {
+              console.log('Torrent paused (removed from client, files preserved):', magnetUri);
+              resolve(true);
+            } else {
+              console.error('Pause error:', err);
+              resolve(false);
+            }
+          });
+        });
       }
       return false;
     } catch (error) {
@@ -216,28 +225,26 @@ class TorrentManager {
     }
   }
 
-  // Resume a torrent
-  async resumeTorrent(magnetUri) {
-    try {
-      const torrent = this.client.get(magnetUri);
-      if (torrent) {
-        torrent.resume();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Resume error:', error);
-      return false;
-    }
-  }
+  // Resume a torrent (REMOVED - use addTorrent instead)
+  // The resumeTorrent function is no longer needed
+  // Use addTorrent() which will automatically resume from existing files
 
-  // Remove a torrent
+  // Remove a torrent (UPDATED - uses client.remove with destroyStore: true)
   async removeTorrent(magnetUri) {
     try {
       const torrent = this.client.get(magnetUri);
       if (torrent) {
-        torrent.destroy();
-        return true;
+        return new Promise((resolve) => {
+          this.client.remove(magnetUri, { destroyStore: true }, (err) => {
+            if (!err) {
+              console.log('Torrent removed (files deleted from disk):', magnetUri);
+              resolve(true);
+            } else {
+              console.error('Remove error:', err);
+              resolve(false);
+            }
+          });
+        });
       }
       return false;
     } catch (error) {

@@ -17,6 +17,7 @@ function createTabStore() {
         url,
         title,
         loading: false,
+        paused: false, // NEW: Track if torrent is paused
         favicon: null,
         canGoBack: false,
         canGoForward: false,
@@ -77,6 +78,16 @@ function createTabStore() {
         ...state,
         tabs: state.tabs.map(tab => 
           tab.id === tabId ? { ...tab, ...updates } : tab
+        )
+      }));
+    },
+    
+    // NEW: Helper methods for pause state management
+    setPaused: (tabId, paused) => {
+      update(state => ({
+        ...state,
+        tabs: state.tabs.map(tab => 
+          tab.id === tabId ? { ...tab, paused } : tab
         )
       }));
     },

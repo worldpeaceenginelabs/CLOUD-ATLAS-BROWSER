@@ -126,7 +126,7 @@ ipcMain.handle('add-torrent', (event, magnetUri) => torrentManager.addTorrent(ma
 ipcMain.handle('seed-file', (event, filePath) => torrentManager.seedFile(filePath));
 ipcMain.handle('download-file', (event, magnetUri, fileName) => torrentManager.downloadFile(magnetUri, fileName));
 ipcMain.handle('pause-torrent', (event, magnetUri) => torrentManager.pauseTorrent(magnetUri));
-ipcMain.handle('resume-torrent', (event, magnetUri) => torrentManager.resumeTorrent(magnetUri));
+
 ipcMain.handle('remove-torrent', (event, magnetUri) => torrentManager.removeTorrent(magnetUri));
 ipcMain.handle('get-torrent-stats', () => torrentManager.getTorrentStats());
 

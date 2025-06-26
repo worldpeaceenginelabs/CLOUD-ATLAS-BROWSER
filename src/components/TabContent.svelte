@@ -20,28 +20,47 @@
     }
   }
 
+  // UPDATED: Pause torrent using remove with destroyStore: false
   async function pauseTorrent() {
     try {
-      await window.electronAPI.pauseTorrent(tab.url);
-      addLog('Torrent paused', 'info');
+      const success = await window.electronAPI.pauseTorrent(tab.url);
+      if (success) {
+        addLog('Torrent paused (removed from client, files preserved)', 'info');
+        // Update UI state to show paused - you might want to update tab store here
+      } else {
+        addLog('Failed to pause torrent', 'error');
+      }
     } catch (error) {
       addLog(`Pause error: ${error.message}`, 'error');
     }
   }
 
+  // UPDATED: Resume torrent using existing addTorrent function
   async function resumeTorrent() {
     try {
-      await window.electronAPI.resumeTorrent(tab.url);
-      addLog('Torrent resumed', 'info');
+      // Use existing addTorrent - it will automatically detect existing files and resume
+      const torrentInfo = await window.electronAPI.addTorrent(tab.url);
+      if (torrentInfo) {
+        addLog(`Torrent resumed: ${torrentInfo.name}`, 'success');
+        // WebTorrent will automatically continue from where it left off
+      } else {
+        addLog('Failed to resume torrent', 'error');
+      }
     } catch (error) {
       addLog(`Resume error: ${error.message}`, 'error');
     }
   }
 
+  // UPDATED: Remove torrent using remove with destroyStore: true  
   async function removeTorrent() {
     try {
-      await window.electronAPI.removeTorrent(tab.url);
-      addLog('Torrent removed', 'info');
+      const success = await window.electronAPI.removeTorrent(tab.url);
+      if (success) {
+        addLog('Torrent removed (files deleted from disk)', 'info');
+        // Optionally close the tab or update UI to show removed state
+      } else {
+        addLog('Failed to remove torrent', 'error');
+      }
     } catch (error) {
       addLog(`Remove error: ${error.message}`, 'error');
     }
