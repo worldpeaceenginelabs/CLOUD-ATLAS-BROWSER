@@ -92,6 +92,11 @@
     }
   }
 
+  // NEW FUNCTION: Toggle sidebar
+  function handleToggleSidebar() {
+    torrentStore.toggleSidebar();
+  }
+
   function selectAll() {
     if (inputElement) {
       inputElement.select();
@@ -190,10 +195,12 @@
         Send
       </button>
       
+      <!-- FIXED: Added click handler and better labeling -->
       <button 
         class="nav-btn"
-        aria-label="More options"
-        title="More options"
+        on:click={handleToggleSidebar}
+        aria-label="Toggle torrent sidebar"
+        title="Toggle torrent sidebar"
       >
         <MoreVertical size={16} />
       </button>
