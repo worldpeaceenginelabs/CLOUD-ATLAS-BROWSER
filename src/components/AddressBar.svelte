@@ -1,5 +1,6 @@
 <script>
   import { Search, Send, Shield, RefreshCw, ArrowLeft, ArrowRight, MoreVertical } from 'lucide-svelte';
+  import { torrentStore } from '../stores/torrentStore.js';
 
   export let url = '';
   export let loading = false;
@@ -9,6 +10,19 @@
   export let onSubmit = () => {};
   export let onSend = () => {};
   export let onNavigation = () => {};
+
+  let sidebarOpen = false;
+
+  // Subscribe to sidebar state
+  const unsubscribe = torrentStore.subscribe(state => {
+    sidebarOpen = state.sidebarOpen;
+  });
+
+  import { onDestroy } from 'svelte';
+  
+  onDestroy(() => {
+    unsubscribe();
+  });
 
   let inputValue = url;
   let inputElement;

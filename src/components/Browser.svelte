@@ -3,7 +3,9 @@
   import TabBar from './TabBar.svelte';
   import AddressBar from './AddressBar.svelte';
   import TabContent from './TabContent.svelte';
+  import TorrentSidebar from './TorrentSidebar.svelte';
   import { tabStore } from '../stores/tabStore.js';
+  import { torrentStore } from '../stores/torrentStore.js';
 
   export let addLog;
   
@@ -13,6 +15,8 @@
   let activeTabId = null;
   let tabs = [];
   let addressBarComponent;
+  let sidebarOpen = false;
+  let sidebarWidth = 350;
 
   // Subscribe to tab store with debugging
   tabStore.subscribe(value => {
@@ -39,6 +43,12 @@
     }
   });
 
+  // Subscribe to torrent store for sidebar state
+  torrentStore.subscribe(state => {
+    sidebarOpen = state.sidebarOpen;
+    sidebarWidth = state.sidebarWidth;
+  });
+
   onMount(() => {
     // Set up magnet link handler
     if (window.electronAPI) {
@@ -48,19 +58,25 @@
 
       // Set up torrent event listeners
       window.electronAPI.onTorrentProgress((data) => {
-        // Update relevant tab with progress
-        const tab = tabs.find(t => t.url === data.magnetUri);
-        if (tab) {
-          tabStore.updateTab(tab.id, { torrentProgress: data });
-        }
+        // Update torrent store with progress
+        torrentStore.updateProgress(data.magnetUri, data);
       });
 
       window.electronAPI.onTorrentCompleted((data) => {
+        // Update torrent status to completed
+        const torrent = torrentStore.findTorrentByMagnet(data.magnetUri);
+        if (torrent) {
+          torrentStore.setTorrentStatus(torrent.id, 'completed');
+        }
         addLog(`Torrent completed: ${data.name}`, 'success');
       });
 
       window.electronAPI.onTorrentError((message) => {
         addLog(`Torrent error: ${message}`, 'error');
+      });
+
+      window.electronAPI.onTorrentWarning((message) => {
+        addLog(`Torrent warning: ${message}`, 'warning');
       });
 
       // Set up web navigation listeners
@@ -226,6 +242,7 @@
       window.electronAPI.removeAllListeners('torrent-progress');
       window.electronAPI.removeAllListeners('torrent-completed');
       window.electronAPI.removeAllListeners('torrent-error');
+      window.electronAPI.removeAllListeners('torrent-warning');
       window.electronAPI.removeAllListeners('web-navigation');
       window.electronAPI.removeAllListeners('create-new-tab-with-url');
       window.electronAPI.removeAllListeners('focus-address-bar');
@@ -275,34 +292,33 @@
     try {
       if (!url.trim() && action !== 'refresh') return;
 
-      if (activeTabId) {
-        if (action === 'refresh') {
-          // Handle refresh action - reload current page
-          const activeTab = tabs.find(t => t.id === activeTabId);
-          if (activeTab && activeTab.viewId && activeTab.url && 
-              activeTab.url !== 'about:blank' && activeTab.url !== '') {
-            // Use the dedicated reload method
-            if (window.electronAPI) {
-              try {
-                const success = await window.electronAPI.reloadBrowserView(activeTab.viewId);
-                if (success) {
-                  addLog(`Page refreshed: ${activeTab.url}`, 'info');
-                } else {
-                  addLog('Cannot refresh: no content loaded', 'info');
-                }
-              } catch (error) {
-                addLog(`Refresh error: ${error.message}`, 'error');
+      if (action === 'refresh') {
+        // Handle refresh action - reload current page
+        const activeTab = tabs.find(t => t.id === activeTabId);
+        if (activeTab && activeTab.viewId && activeTab.url && 
+            activeTab.url !== 'about:blank' && activeTab.url !== '') {
+          // Use the dedicated reload method
+          if (window.electronAPI) {
+            try {
+              const success = await window.electronAPI.reloadBrowserView(activeTab.viewId);
+              if (success) {
+                addLog(`Page refreshed: ${activeTab.url}`, 'info');
+              } else {
+                addLog('Cannot refresh: no content loaded', 'info');
               }
+            } catch (error) {
+              addLog(`Refresh error: ${error.message}`, 'error');
             }
-          } else {
-            addLog('Nothing to refresh - tab is empty', 'info');
           }
-        } else if (url.startsWith('magnet:')) {
-          await handleMagnetLink(url);
         } else {
-          // Handle regular web navigation
-          handleWebNavigation(url, action);
+          addLog('Nothing to refresh - tab is empty', 'info');
         }
+      } else if (url.startsWith('magnet:')) {
+        // Handle magnet links via sidebar instead of creating tabs
+        await handleMagnetLink(url);
+      } else {
+        // Handle regular web navigation
+        handleWebNavigation(url, action);
       }
     } catch (error) {
       addLog(`Navigation error: ${error.message}`, 'error');
@@ -366,36 +382,32 @@
 
   async function handleMagnetLink(magnetUri) {
     try {
-      // Create new tab for torrent or use existing
-      let targetTabId = activeTabId;
-      if (!targetTabId || !tabs.find(t => t.id === targetTabId)?.url.startsWith('magnet:')) {
-        targetTabId = tabStore.createTab();
-      }
-
-      tabStore.updateTab(targetTabId, { 
-        url: magnetUri, 
-        loading: true,
-        title: 'Loading Torrent...'
-      });
-
-      addLog(`Loading magnet link: ${magnetUri.substring(0, 50)}...`, 'info');
+      addLog(`Adding torrent: ${magnetUri.substring(0, 50)}...`, 'info');
       
       // Add torrent via main process
       const torrentInfo = await window.electronAPI.addTorrent(magnetUri);
       
-      tabStore.updateTab(targetTabId, { 
-        loading: false,
-        title: torrentInfo.name,
-        torrentInfo
-      });
-      
-      addLog(`Torrent loaded: ${torrentInfo.name}`, 'success');
+      if (torrentInfo) {
+        // Add to torrent store
+        const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo);
+        addLog(`Torrent added: ${torrentInfo.name}`, 'success');
+        
+        // Save to persistence
+        const { persistenceStore } = await import('../stores/persistenceStore.js');
+        await persistenceStore.saveTorrent({
+          id: torrentId,
+          magnetUri,
+          name: torrentInfo.name,
+          status: 'downloading',
+          files: torrentInfo.files,
+          dateAdded: new Date()
+        });
+      } else {
+        throw new Error('Failed to add torrent');
+      }
       
     } catch (error) {
       addLog(`Magnet link error: ${error.message}`, 'error');
-      if (targetTabId) {
-        tabStore.updateTab(targetTabId, { loading: false });
-      }
     }
   }
 
@@ -494,15 +506,24 @@
     onNavigation={(event) => handleNavigation({ detail: event })}
   />
 
-  <!-- Content Area -->
-  <div class="content-area">
-    {#each tabs as tab (tab.id)}
-      <TabContent 
-        {tab} 
-        active={tab.id === activeTabId}
-        {addLog}
-      />
-    {/each}
+  <!-- Main Content Area with Sidebar -->
+  <div class="content-wrapper">
+    <!-- Content Area -->
+    <div 
+      class="content-area" 
+      style="{sidebarOpen ? `margin-right: ${sidebarWidth}px` : ''}"
+    >
+      {#each tabs as tab (tab.id)}
+        <TabContent 
+          {tab} 
+          active={tab.id === activeTabId}
+          {addLog}
+        />
+      {/each}
+    </div>
+
+    <!-- Torrent Sidebar -->
+    <TorrentSidebar {addLog} />
   </div>
 </div>
 
@@ -517,12 +538,20 @@
     position: relative;
   }
 
+  .content-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    min-height: 0;
+  }
+
   .content-area {
     flex: 1;
     position: relative;
     overflow: hidden;
     background: white;
-    /* Ensure content area takes exactly the remaining space */
+    transition: margin-right 0.3s ease;
     min-height: 0;
     width: 100%;
   }
@@ -545,5 +574,12 @@
 
   .content-area :global(.tab-content.active) {
     display: block;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .content-area {
+      margin-right: 0 !important;
+    }
   }
 </style>
