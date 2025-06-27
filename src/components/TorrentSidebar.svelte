@@ -30,6 +30,10 @@
       // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
       savedTorrents.forEach(torrent => {
+        // If the torrent was previously downloading, set it to paused on load
+        if (torrent.status === 'downloading') {
+          torrent.status = 'paused';
+        }
         // Check for duplicates before adding
         if (!torrentStore.torrentExists(torrent.magnetUri)) {
           const torrentId = torrentStore.addTorrent(torrent.magnetUri, torrent);
