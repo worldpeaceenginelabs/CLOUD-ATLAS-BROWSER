@@ -28,9 +28,15 @@ class BrowserManager {
       const view = this.browserViews.get(this.currentViewId);
       const [width, height] = this.mainWindow.getContentSize();
       
+      // Account for sidebar width (600px)
+      const sidebarWidth = 600;
+      const viewWidth = width - sidebarWidth;
+      
       console.log('Updating browser view bounds:', {
         width,
         height,
+        sidebarWidth,
+        viewWidth,
         yOffset: this.browserViewYOffset,
         viewHeight: height - this.browserViewYOffset
       });
@@ -38,7 +44,7 @@ class BrowserManager {
       view.setBounds({ 
         x: 0, 
         y: this.browserViewYOffset,
-        width: width, 
+        width: viewWidth, 
         height: height - this.browserViewYOffset
       });
     }
@@ -75,10 +81,15 @@ class BrowserManager {
 
       // Set view bounds using proper content size
       const [width, height] = this.mainWindow.getContentSize();
+      
+      // Account for sidebar width (600px)
+      const sidebarWidth = 600;
+      const viewWidth = width - sidebarWidth;
+      
       view.setBounds({ 
         x: 0, 
         y: this.browserViewYOffset,
-        width: width, 
+        width: viewWidth, 
         height: height - this.browserViewYOffset
       });
 
@@ -266,10 +277,15 @@ class BrowserManager {
         
         // Update bounds using proper content size
         const [width, height] = this.mainWindow.getContentSize();
+        
+        // Account for sidebar width (600px)
+        const sidebarWidth = 600;
+        const viewWidth = width - sidebarWidth;
+        
         view.setBounds({ 
           x: 0, 
           y: this.browserViewYOffset,
-          width: width, 
+          width: viewWidth, 
           height: height - this.browserViewYOffset
         });
         
