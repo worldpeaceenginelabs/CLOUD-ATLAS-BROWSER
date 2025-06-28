@@ -35,7 +35,7 @@
   onMount(async () => {
     try {
       const savedSidebarOpen = await persistenceStore.loadUIState('sidebarOpen', false);
-      const savedSidebarWidth = await persistenceStore.loadUIState('sidebarWidth', 350);
+      const savedSidebarWidth = await persistenceStore.loadUIState('sidebarWidth', 600);
       
       torrentStore.setSidebarOpen(savedSidebarOpen);
       torrentStore.setSidebarWidth(savedSidebarWidth);
@@ -121,11 +121,20 @@
 
   async function handlePauseTorrent(torrent) {
     try {
+      // Prevent duplicate saves if already paused
+      if (torrent.status === 'paused') {
+        addLog(`Already paused: ${torrent.name}`, 'info');
+        return;
+      }
+      
       if (window.electronAPI) {
         const success = await window.electronAPI.pauseTorrent(torrent.magnetUri);
         if (success) {
           torrentStore.pauseTorrent(torrent.infoHash);
-          await persistenceStore.saveTorrent({ ...torrent, status: 'paused' }, false);
+          // Only save if status actually changed
+          if (torrent.status !== 'paused') {
+            await persistenceStore.saveTorrent({ ...torrent, status: 'paused' }, false);
+          }
           addLog(`Paused: ${torrent.name}`, 'info');
         } else {
           addLog(`Failed to pause: ${torrent.name}`, 'error');
@@ -138,11 +147,20 @@
 
   async function handleResumeTorrent(torrent) {
     try {
+      // Prevent duplicate saves if already downloading
+      if (torrent.status === 'downloading') {
+        addLog(`Already downloading: ${torrent.name}`, 'info');
+        return;
+      }
+      
       if (window.electronAPI) {
         const torrentInfo = await window.electronAPI.addTorrent(torrent.magnetUri);
         if (torrentInfo) {
           torrentStore.resumeTorrent(torrent.infoHash);
-          await persistenceStore.saveTorrent({ ...torrent, status: 'downloading' }, false);
+          // Only save if status actually changed
+          if (torrent.status !== 'downloading') {
+            await persistenceStore.saveTorrent({ ...torrent, status: 'downloading' }, false);
+          }
           addLog(`Resumed: ${torrent.name}`, 'info');
         } else {
           addLog(`Failed to resume: ${torrent.name}`, 'error');
@@ -946,6 +964,9 @@
   .speed-text {
     font-size: 10px;
     color: #9ca3af;
+    font-family: 'Courier New', monospace;
+    min-width: 120px;
+    display: inline-block;
   }
 
   /* Controls */

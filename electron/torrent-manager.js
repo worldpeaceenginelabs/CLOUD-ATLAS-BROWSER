@@ -60,15 +60,6 @@ class TorrentManager {
         const fileName = decodeURIComponent(match[2]);
         
         console.log(`Stream request: ${infoHash} - ${fileName}`);
-        console.log(`Available torrents in registry:`, Array.from(this.activeTorrents.keys()));
-        console.log(`Available torrent info:`, Array.from(this.torrentInfoMap.keys()));
-        
-        // Debug: Show all torrent info entries
-        console.log('=== DEBUG: All torrent info entries ===');
-        for (const [hash, info] of this.torrentInfoMap.entries()) {
-          console.log(`Hash: ${hash}, Name: ${info.name}, Magnet: ${info.magnetUri}`);
-        }
-        console.log('=== END DEBUG ===');
         
         // First try to get torrent object from active torrents
         let torrent = this.activeTorrents.get(infoHash);
@@ -80,7 +71,6 @@ class TorrentManager {
             console.log(`Found torrent info for paused torrent: ${torrentInfo.name}`);
             // For paused torrents, we need to check if files exist on disk
             const filePath = path.join(torrentInfo.path, torrentInfo.name, fileName);
-            console.log(`Looking for file at: ${filePath}`);
             if (fs.existsSync(filePath)) {
               // Create a file-like object for streaming
               const stats = fs.statSync(filePath);
@@ -134,8 +124,6 @@ class TorrentManager {
             }
           } else {
             console.log(`Torrent not found in streamable torrents registry: ${infoHash}`);
-            console.log(`Searched in activeTorrents: ${this.activeTorrents.has(infoHash)}`);
-            console.log(`Searched in torrentInfoMap: ${this.torrentInfoMap.has(infoHash)}`);
             res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
             res.end('Torrent not found or not yet downloading');
             return;
@@ -275,6 +263,9 @@ class TorrentManager {
           // Store the torrent object itself when it's reliable (during download)
           // KEEP IN STREAMABLE TORRENTS REGISTRY - never remove from here until complete removal
           if (torrent.infoHash) {
+            // Only log once when torrent is first added to registry
+            const wasAlreadyInRegistry = this.activeTorrents.has(torrent.infoHash);
+            
             this.activeTorrents.set(torrent.infoHash, torrent);
             
             // Store torrent info for reliable lookup when paused - ONLY during download event (reliable source)
@@ -289,14 +280,9 @@ class TorrentManager {
               })) : []
             });
             
-            console.log(`Added torrent to streamable registry: ${torrent.name} (${torrent.infoHash})`);
-            console.log(`DEBUG: Stored torrent info for ${torrent.infoHash}:`, {
-              name: torrent.name,
-              path: torrent.path,
-              magnetUri: magnetUri,
-              filesCount: torrent.files ? torrent.files.length : 0
-            });
-            console.log(`DEBUG: torrentInfoMap now has ${this.torrentInfoMap.size} entries`);
+            if (!wasAlreadyInRegistry) {
+              console.log(`Added torrent to streamable registry: ${torrent.name} (${torrent.infoHash})`);
+            }
           } else {
             console.warn(`Torrent ${torrent.name} has no infoHash available yet`);
           }

@@ -16,7 +16,7 @@
   let tabs = [];
   let addressBarComponent;
   let sidebarOpen = false;
-  let sidebarWidth = 500;
+  let sidebarWidth = 600; // Default, will be updated by torrentStore subscription
 
   // Subscribe to tab store with debugging
   tabStore.subscribe(value => {
@@ -61,21 +61,21 @@
         // Update torrent store with progress
         torrentStore.updateProgress(data.magnetUri, data);
         
-        // Save updated progress to persistence (updates to existing torrents)
-        setTimeout(async () => {
-          const torrent = torrentStore.findTorrentByMagnet(data.magnetUri);
-          if (torrent) {
-            const { persistenceStore } = await import('../stores/persistenceStore.js');
-            await persistenceStore.saveTorrent(torrent, false); // ← FALSE = update existing, no duplicate check
-          }
-        }, 1000); // Debounce saves
+        // Progress updates are handled by the torrent store
+        // Database saves only happen on status changes (completion, pause, resume)
       });
 
       window.electronAPI.onTorrentCompleted((data) => {
         // Update torrent status to completed
         const torrent = torrentStore.findTorrentByMagnet(data.magnetUri);
         if (torrent) {
-          torrentStore.setTorrentStatus(torrent.id, 'completed');
+          torrentStore.setTorrentStatus(torrent.infoHash, 'completed');
+          
+          // Save the completed status to persistence
+          setTimeout(async () => {
+            const { persistenceStore } = await import('../stores/persistenceStore.js');
+            await persistenceStore.saveTorrent({ ...torrent, status: 'completed' }, false);
+          }, 100);
         }
         addLog(`Torrent completed: ${data.name}`, 'success');
       });

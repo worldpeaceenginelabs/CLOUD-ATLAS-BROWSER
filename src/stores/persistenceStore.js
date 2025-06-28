@@ -109,8 +109,6 @@ class PersistenceStore {
       request.onsuccess = () => {
         if (isNewTorrent) {
           console.log('New torrent saved to database:', torrent.name);
-        } else {
-          console.log('Torrent updated in database:', torrent.name, 'status:', torrent.status);
         }
         resolve(true);
       };

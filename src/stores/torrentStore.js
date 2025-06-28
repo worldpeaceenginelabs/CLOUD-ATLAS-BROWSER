@@ -15,7 +15,7 @@ function createTorrentStore() {
   const { subscribe, set, update } = writable({
     torrents: [], // Array of torrent objects
     sidebarOpen: false,
-    sidebarWidth: 350 // Default sidebar width
+    sidebarWidth: 600 // Default sidebar width
   });
 
   return {
