@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setActiveBrowserView: (viewId) => ipcRenderer.invoke('set-active-browser-view', viewId),
   closeBrowserView: (viewId) => ipcRenderer.invoke('close-browser-view', viewId),
   navigateBrowserView: (viewId, url) => ipcRenderer.invoke('navigate-browser-view', viewId, url),
+  createNewTabWithUrl: (url) => ipcRenderer.invoke('create-new-tab-with-url', url),
   
   // Navigation
   goBack: (viewId) => ipcRenderer.invoke('go-back', viewId),

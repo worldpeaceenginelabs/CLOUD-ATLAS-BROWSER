@@ -102,13 +102,20 @@ class TorrentManager {
                 res.end();
                 return;
               }
-              res.writeHead(range ? 206 : 200, {
+              
+              const headers = {
                 'Content-Type': this.getMimeType(fileName),
                 'Content-Length': end - start + 1,
                 'Accept-Ranges': 'bytes',
-                'Content-Range': range ? `bytes ${start}-${end}/${fileLength}` : undefined,
                 'Access-Control-Allow-Origin': '*'
-              });
+              };
+              
+              // Only add Content-Range header if this is a range request
+              if (range) {
+                headers['Content-Range'] = `bytes ${start}-${end}/${fileLength}`;
+              }
+              
+              res.writeHead(range ? 206 : 200, headers);
               const stream = file.createReadStream({ start, end });
               stream.pipe(res);
               stream.on('error', err => {
@@ -167,13 +174,20 @@ class TorrentManager {
           res.end();
           return;
         }
-        res.writeHead(range ? 206 : 200, {
+        
+        const headers = {
           'Content-Type': this.getMimeType(fileName),
           'Content-Length': end - start + 1,
           'Accept-Ranges': 'bytes',
-          'Content-Range': range ? `bytes ${start}-${end}/${fileLength}` : undefined,
           'Access-Control-Allow-Origin': '*'
-        });
+        };
+        
+        // Only add Content-Range header if this is a range request
+        if (range) {
+          headers['Content-Range'] = `bytes ${start}-${end}/${fileLength}`;
+        }
+        
+        res.writeHead(range ? 206 : 200, headers);
         const stream = file.createReadStream({ start, end });
         stream.pipe(res);
         stream.on('error', err => {

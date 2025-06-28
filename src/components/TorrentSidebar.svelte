@@ -296,15 +296,25 @@
 
   async function previewImage(torrent, file) {
     try {
+      // Check if file has any progress
       if (torrent.progress === 0) {
         addLog(`Cannot preview: ${file.name} - not yet downloaded`, 'warning');
         return;
       }
+      
       addLog(`Loading preview: ${file.name}`, 'info');
       // Use local HTTP server URL
       const url = `http://127.0.0.1:18080/stream/${torrent.infoHash}/${encodeURIComponent(file.name)}`;
-      window.open(url, '_blank');
-      addLog(`Preview opened: ${file.name}`, 'success');
+      
+      // Open in new Electron tab instead of Chrome browser
+      if (window.electronAPI) {
+        window.electronAPI.createNewTabWithUrl(url);
+        addLog(`Preview opened in new tab: ${file.name}`, 'success');
+      } else {
+        // Fallback to window.open if Electron API not available
+        window.open(url, '_blank');
+        addLog(`Preview opened: ${file.name}`, 'success');
+      }
     } catch (error) {
       console.error('Preview error:', error);
       addLog(`Preview error: ${error.message}`, 'error');

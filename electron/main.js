@@ -150,11 +150,20 @@ ipcMain.handle('get-torrent-stats', () => torrentManager.getTorrentStats());
 ipcMain.handle('create-browser-view', (event, url) => browserManager.createBrowserView(url));
 ipcMain.handle('set-active-browser-view', (event, viewId) => browserManager.setActiveBrowserView(viewId));
 ipcMain.handle('close-browser-view', (event, viewId) => {
-  navigationManager.cleanupView(viewId);
-  return browserManager.closeBrowserView(viewId);
+  const success = browserManager.closeBrowserView(viewId);
+  return success;
 });
 ipcMain.handle('navigate-browser-view', (event, viewId, url) => browserManager.navigateBrowserView(viewId, url));
 ipcMain.handle('reload-browser-view', (event, viewId) => browserManager.reloadBrowserView(viewId));
+ipcMain.handle('create-new-tab-with-url', async (event, url) => {
+  // Create new browser view and set it as active
+  const viewId = await browserManager.createBrowserView(url);
+  if (viewId) {
+    await browserManager.setActiveBrowserView(viewId);
+    return viewId;
+  }
+  return null;
+});
 
 // IPC Handlers - Navigation
 ipcMain.handle('go-back', (event, viewId) => navigationManager.goBack(viewId));

@@ -108,6 +108,19 @@ class BrowserManager {
         console.error('Error getting initial process info:', error);
       }
 
+      // Get memory usage for this specific tab
+      try {
+        const processId = view.webContents.getOSProcessId();
+        console.log(`Tab ${viewId} (PID: ${processId}) created successfully`);
+        this.sendToRenderer('tab-process-info', { 
+          viewId, 
+          processId, 
+          type: 'memory-update'
+        });
+      } catch (error) {
+        console.error('Error getting process info for tab:', viewId, error);
+      }
+
       console.log('Process-isolated browser view created successfully:', viewId, url);
       return viewId;
 
@@ -145,17 +158,15 @@ class BrowserManager {
       
       // Get memory usage for this specific tab
       try {
-        const memInfo = await view.webContents.getProcessMemoryInfo();
         const processId = view.webContents.getOSProcessId();
-        console.log(`Tab ${viewId} (PID: ${processId}) memory usage:`, memInfo);
+        console.log(`Tab ${viewId} (PID: ${processId}) created successfully`);
         this.sendToRenderer('tab-process-info', { 
           viewId, 
           processId, 
-          memoryInfo: memInfo,
           type: 'memory-update'
         });
       } catch (error) {
-        console.error('Error getting memory info for tab:', viewId, error);
+        console.error('Error getting process info for tab:', viewId, error);
       }
     });
 
