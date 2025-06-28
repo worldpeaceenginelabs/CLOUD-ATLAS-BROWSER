@@ -16,7 +16,7 @@
   let tabs = [];
   let addressBarComponent;
   let sidebarOpen = false;
-  let sidebarWidth = 350;
+  let sidebarWidth = 500;
 
   // Subscribe to tab store with debugging
   tabStore.subscribe(value => {

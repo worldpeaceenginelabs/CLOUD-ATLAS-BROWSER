@@ -290,7 +290,7 @@
     <div class="default-content p-6 h-full flex items-center justify-center">
       <div class="text-center max-w-md">
         <div class="text-6xl mb-6">🌐</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">WebTorrent Browser</h2>
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">CLOUD-ATLAS-BROWSER</h2>
         <p class="text-gray-600 mb-6">Browse the web or manage torrents via the sidebar</p>
         
         <div class="bg-gray-50 rounded-lg p-4 text-left">

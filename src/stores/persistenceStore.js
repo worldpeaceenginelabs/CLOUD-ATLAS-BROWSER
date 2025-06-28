@@ -26,9 +26,8 @@ class PersistenceStore {
         
         // Create torrents store
         if (!db.objectStoreNames.contains('torrents')) {
-          const torrentStore = db.createObjectStore('torrents', { keyPath: 'id' });
+          const torrentStore = db.createObjectStore('torrents', { keyPath: 'infoHash' });
           torrentStore.createIndex('magnetUri', 'magnetUri', { unique: true });
-          torrentStore.createIndex('infoHash', 'infoHash', { unique: true }); // NEW: Index by hash
           torrentStore.createIndex('status', 'status', { unique: false });
         }
         
@@ -96,9 +95,8 @@ class PersistenceStore {
       
       // Don't save temporary UI state - only persistent torrent data
       const persistentTorrent = {
-        id: torrent.id,
-        magnetUri: torrent.magnetUri,
         infoHash: torrent.infoHash,
+        magnetUri: torrent.magnetUri,
         name: torrent.name,
         status: torrent.status,
         files: torrent.files,
@@ -150,13 +148,13 @@ class PersistenceStore {
   }
 
   // Remove torrent from storage
-  async removeTorrent(torrentId) {
+  async removeTorrent(infoHash) {
     if (!this.db) await this.init();
     
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['torrents'], 'readwrite');
       const store = transaction.objectStore('torrents');
-      const request = store.delete(torrentId);
+      const request = store.delete(infoHash.toLowerCase());
       
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);

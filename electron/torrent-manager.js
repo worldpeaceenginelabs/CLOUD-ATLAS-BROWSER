@@ -3,6 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { dialog } from 'electron';
+import http from 'http';
+import url from 'url';
 
 class TorrentManager {
   constructor() {
@@ -10,9 +12,11 @@ class TorrentManager {
     this.mainWindow = null;
     this.pausedTorrents = new Map(); // Store paused torrent info
     this.activeTorrentPaths = new Map(); // Store active torrent paths from download events
+    this.httpServer = null;
+    this.httpPort = 18080; // You can randomize or increment if needed
   }
 
-  // Initialize WebTorrent client
+  // Initialize WebTorrent client and HTTP server
   initialize() {
     this.client = new WebTorrent({
       maxConns: 50,
@@ -40,6 +44,77 @@ class TorrentManager {
     });
 
     console.log('WebTorrent client initialized in main process');
+    this.startHttpServer();
+  }
+
+  // Start local HTTP server for streaming
+  startHttpServer() {
+    if (this.httpServer) return;
+    this.httpServer = http.createServer((req, res) => {
+      const parsedUrl = url.parse(req.url, true);
+      const match = parsedUrl.pathname.match(/^\/stream\/([a-zA-Z0-9]+)\/(.+)$/);
+      if (match) {
+        const infoHash = match[1].toLowerCase();
+        const fileName = decodeURIComponent(match[2]);
+        const torrent = this.client.get(infoHash);
+        if (!torrent) {
+          res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+          res.end('Torrent not found');
+          return;
+        }
+        const file = torrent.files.find(f => f.name === fileName);
+        if (!file) {
+          res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+          res.end('File not found');
+          return;
+        }
+        // Support HTTP Range requests
+        const range = req.headers.range;
+        const fileLength = file.length;
+        let start = 0;
+        let end = fileLength - 1;
+        if (range) {
+          const match = range.match(/bytes=(\d+)-(\d*)/);
+          if (match) {
+            start = parseInt(match[1], 10);
+            if (match[2]) end = parseInt(match[2], 10);
+          }
+        }
+        if (start > end || start < 0 || end >= fileLength) {
+          res.writeHead(416, { 'Content-Range': `bytes */${fileLength}`, 'Access-Control-Allow-Origin': '*' });
+          res.end();
+          return;
+        }
+        res.writeHead(range ? 206 : 200, {
+          'Content-Type': this.getMimeType(fileName),
+          'Content-Length': end - start + 1,
+          'Accept-Ranges': 'bytes',
+          'Content-Range': range ? `bytes ${start}-${end}/${fileLength}` : undefined,
+          'Access-Control-Allow-Origin': '*'
+        });
+        const stream = file.createReadStream({ start, end });
+        stream.pipe(res);
+        stream.on('error', err => {
+          res.end();
+        });
+      } else {
+        res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+        res.end('Not found');
+      }
+    });
+    this.httpServer.listen(this.httpPort, '127.0.0.1', () => {
+      console.log(`Torrent HTTP server running at http://127.0.0.1:${this.httpPort}`);
+    });
+  }
+
+  // Simple MIME type detection
+  getMimeType(fileName) {
+    const ext = fileName.split('.').pop().toLowerCase();
+    if (['mp4', 'mkv', 'webm', 'avi', 'mov', 'flv'].includes(ext)) return 'video/mp4';
+    if (['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac'].includes(ext)) return 'audio/mpeg';
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) return `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+    if (ext === 'srt') return 'text/plain';
+    return 'application/octet-stream';
   }
 
   // Set reference to main window for communication

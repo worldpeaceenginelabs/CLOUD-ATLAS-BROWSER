@@ -42,29 +42,27 @@
       
       // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
-      savedTorrents.forEach(torrent => {
-        // If the torrent was previously downloading, set it to paused on load
-        if (torrent.status === 'downloading') {
-          torrent.status = 'paused';
-        }
+      for (const torrent of savedTorrents) {
         // Check for duplicates before adding
         if (!torrentStore.torrentExists(torrent.magnetUri)) {
-          const torrentId = torrentStore.addTorrent(torrent.magnetUri, torrent);
-          if (torrentId) {
-            // Update the added torrent with saved state
-            torrentStore.updateTorrent(torrentId, {
-              name: torrent.name,
-              status: torrent.status,
-              files: torrent.files,
-              dateAdded: new Date(torrent.dateAdded),
-              actualDownloadPath: torrent.actualDownloadPath
-            });
-          }
-        } else {
-          console.log('Skipping duplicate torrent on load:', torrent.name);
+          torrentStore.addTorrent(torrent.magnetUri, torrent);
         }
-      });
-
+        // Always re-add to WebTorrent client
+        if (window.electronAPI) {
+          await window.electronAPI.addTorrent(torrent.magnetUri);
+          if (torrent.status === 'paused') {
+            await window.electronAPI.pauseTorrent(torrent.magnetUri);
+          }
+        }
+        // Update store with restored state
+        torrentStore.updateTorrent(torrent.infoHash, {
+          name: torrent.name,
+          status: torrent.status,
+          files: torrent.files,
+          dateAdded: new Date(torrent.dateAdded),
+          actualDownloadPath: torrent.actualDownloadPath
+        });
+      }
       if (savedTorrents.length > 0) {
         addLog(`Restored ${savedTorrents.length} torrents from previous session`, 'info');
       }
@@ -126,8 +124,8 @@
       if (window.electronAPI) {
         const success = await window.electronAPI.pauseTorrent(torrent.magnetUri);
         if (success) {
-          torrentStore.pauseTorrent(torrent.id);
-          await persistenceStore.saveTorrent({ ...torrent, status: 'paused' }, false); // ← FALSE = update existing
+          torrentStore.pauseTorrent(torrent.infoHash);
+          await persistenceStore.saveTorrent({ ...torrent, status: 'paused' }, false);
           addLog(`Paused: ${torrent.name}`, 'info');
         } else {
           addLog(`Failed to pause: ${torrent.name}`, 'error');
@@ -143,8 +141,8 @@
       if (window.electronAPI) {
         const torrentInfo = await window.electronAPI.addTorrent(torrent.magnetUri);
         if (torrentInfo) {
-          torrentStore.resumeTorrent(torrent.id);
-          await persistenceStore.saveTorrent({ ...torrent, status: 'downloading' }, false); // ← FALSE = update existing
+          torrentStore.resumeTorrent(torrent.infoHash);
+          await persistenceStore.saveTorrent({ ...torrent, status: 'downloading' }, false);
           addLog(`Resumed: ${torrent.name}`, 'info');
         } else {
           addLog(`Failed to resume: ${torrent.name}`, 'error');
@@ -160,8 +158,8 @@
       if (window.electronAPI) {
         const success = await window.electronAPI.removeTorrent(torrent.magnetUri);
         if (success) {
-          torrentStore.removeTorrent(torrent.id);
-          await persistenceStore.removeTorrent(torrent.id);
+          torrentStore.removeTorrent(torrent.infoHash);
+          await persistenceStore.removeTorrent(torrent.infoHash);
           addLog(`Removed: ${torrent.name}`, 'info');
         } else {
           addLog(`Failed to remove: ${torrent.name}`, 'error');
@@ -236,41 +234,27 @@
         addLog(`Cannot stream: ${file.name} - not yet downloaded`, 'warning');
         return;
       }
-
-      // Stop any currently playing media
       stopMedia();
-      
       currentTorrent = torrent;
       currentMediaFile = file;
       mediaPlayerOpen = true;
-
       addLog(`Starting stream: ${file.name}`, 'info');
-
-      // Get the WebTorrent file object from the main process
-      if (window.electronAPI) {
-        const fileStream = await window.electronAPI.getFileStream(torrent.magnetUri, file.name);
-        if (fileStream) {
-          const isVideo = file.name.match(/\.(mp4|webm|avi|mkv|mov|flv)$/i);
-          const isAudio = file.name.match(/\.(mp3|wav|flac|ogg|m4a|aac)$/i);
-          
-          if (isVideo) {
-            videoElement.src = fileStream;
-            videoElement.style.display = 'block';
-            if (audioElement) audioElement.style.display = 'none';
-            addLog(`Video streaming: ${file.name}`, 'success');
-          } else if (isAudio) {
-            audioElement.src = fileStream;
-            audioElement.style.display = 'block';
-            if (videoElement) videoElement.style.display = 'none';
-            addLog(`Audio streaming: ${file.name}`, 'success');
-          } else {
-            addLog(`Unsupported media format: ${file.name}`, 'warning');
-          }
-        } else {
-          addLog(`Failed to get stream for: ${file.name}`, 'error');
-        }
+      // Use local HTTP server URL
+      const url = `http://127.0.0.1:18080/stream/${torrent.infoHash}/${encodeURIComponent(file.name)}`;
+      const isVideo = file.name.match(/\.(mp4|webm|avi|mkv|mov|flv)$/i);
+      const isAudio = file.name.match(/\.(mp3|wav|flac|ogg|m4a|aac)$/i);
+      if (isVideo) {
+        videoElement.src = url;
+        videoElement.style.display = 'block';
+        if (audioElement) audioElement.style.display = 'none';
+        addLog(`Video streaming: ${file.name}`, 'success');
+      } else if (isAudio) {
+        audioElement.src = url;
+        audioElement.style.display = 'block';
+        if (videoElement) videoElement.style.display = 'none';
+        addLog(`Audio streaming: ${file.name}`, 'success');
       } else {
-        addLog('Electron API not available', 'error');
+        addLog(`Unsupported media format: ${file.name}`, 'warning');
       }
     } catch (error) {
       console.error('Streaming error:', error);
@@ -280,25 +264,15 @@
 
   async function previewImage(torrent, file) {
     try {
-      // Check if file has any progress
       if (torrent.progress === 0) {
         addLog(`Cannot preview: ${file.name} - not yet downloaded`, 'warning');
         return;
       }
-
       addLog(`Loading preview: ${file.name}`, 'info');
-
-      if (window.electronAPI) {
-        const imageUrl = await window.electronAPI.getFileBlobURL(torrent.magnetUri, file.name);
-        if (imageUrl) {
-          window.open(imageUrl, '_blank');
-          addLog(`Preview opened: ${file.name}`, 'success');
-        } else {
-          addLog(`Failed to get preview for: ${file.name}`, 'error');
-        }
-      } else {
-        addLog('Electron API not available', 'error');
-      }
+      // Use local HTTP server URL
+      const url = `http://127.0.0.1:18080/stream/${torrent.infoHash}/${encodeURIComponent(file.name)}`;
+      window.open(url, '_blank');
+      addLog(`Preview opened: ${file.name}`, 'success');
     } catch (error) {
       console.error('Preview error:', error);
       addLog(`Preview error: ${error.message}`, 'error');

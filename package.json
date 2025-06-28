@@ -1,5 +1,5 @@
 {
-  "name": "electron-webtorrent-browser",
+  "name": "CLOUD-ATLAS-BROWSER",
   "version": "1.0.0",
   "description": "Electron browser with WebTorrent support",
   "main": "electron/main.js",
