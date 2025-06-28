@@ -201,24 +201,128 @@ class TorrentManager {
         return null;
       }
 
-      // Create readable stream and pipe to file
+      // Create a readable stream from the file
       const fileStream = file.createReadStream();
       const writeStream = fs.createWriteStream(savePath.filePath);
-      
-      fileStream.pipe(writeStream);
 
       return new Promise((resolve, reject) => {
+        fileStream.pipe(writeStream);
+        
         writeStream.on('finish', () => {
           console.log('File downloaded:', savePath.filePath);
           resolve(savePath.filePath);
         });
-
-        writeStream.on('error', reject);
-        fileStream.on('error', reject);
+        
+        writeStream.on('error', (err) => {
+          console.error('Download error:', err);
+          reject(err);
+        });
       });
 
     } catch (error) {
-      console.error('Download error:', error);
+      console.error('Download file error:', error);
+      throw error;
+    }
+  }
+
+  // Get file stream for media playback
+  async getFileStream(magnetUri, fileName) {
+    try {
+      const torrent = this.client.get(magnetUri);
+      if (!torrent) {
+        throw new Error('Torrent not found');
+      }
+
+      const file = torrent.files.find(f => f.name === fileName);
+      if (!file) {
+        throw new Error('File not found in torrent');
+      }
+
+      // Check if file has enough data to stream
+      if (file.downloaded === 0) {
+        throw new Error('File not yet downloaded');
+      }
+
+      // Create a blob URL from the file
+      return new Promise((resolve, reject) => {
+        file.getBlobURL((err, url) => {
+          if (err) {
+            console.error('Error creating blob URL:', err);
+            reject(err);
+          } else {
+            console.log('Created blob URL for streaming:', fileName);
+            resolve(url);
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error('Get file stream error:', error);
+      throw error;
+    }
+  }
+
+  // Get file blob URL for image preview
+  async getFileBlobURL(magnetUri, fileName) {
+    try {
+      const torrent = this.client.get(magnetUri);
+      if (!torrent) {
+        throw new Error('Torrent not found');
+      }
+
+      const file = torrent.files.find(f => f.name === fileName);
+      if (!file) {
+        throw new Error('File not found in torrent');
+      }
+
+      // Check if file has enough data to preview
+      if (file.downloaded === 0) {
+        throw new Error('File not yet downloaded');
+      }
+
+      // Create a blob URL from the file
+      return new Promise((resolve, reject) => {
+        file.getBlobURL((err, url) => {
+          if (err) {
+            console.error('Error creating blob URL:', err);
+            reject(err);
+          } else {
+            console.log('Created blob URL for preview:', fileName);
+            resolve(url);
+          }
+        });
+      });
+
+    } catch (error) {
+      console.error('Get file blob URL error:', error);
+      throw error;
+    }
+  }
+
+  // Get file info for streaming readiness
+  async getFileInfo(magnetUri, fileName) {
+    try {
+      const torrent = this.client.get(magnetUri);
+      if (!torrent) {
+        throw new Error('Torrent not found');
+      }
+
+      const file = torrent.files.find(f => f.name === fileName);
+      if (!file) {
+        throw new Error('File not found in torrent');
+      }
+
+      return {
+        name: file.name,
+        length: file.length,
+        downloaded: file.downloaded,
+        progress: file.progress,
+        canStream: file.downloaded > 0,
+        streamable: file.length > 0 && file.downloaded > 0
+      };
+
+    } catch (error) {
+      console.error('Get file info error:', error);
       throw error;
     }
   }

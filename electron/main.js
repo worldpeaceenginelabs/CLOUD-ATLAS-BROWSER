@@ -138,6 +138,11 @@ ipcMain.handle('seed-file', (event, filePath) => torrentManager.seedFile(filePat
 ipcMain.handle('download-file', (event, magnetUri, fileName) => torrentManager.downloadFile(magnetUri, fileName));
 ipcMain.handle('pause-torrent', (event, magnetUri) => torrentManager.pauseTorrent(magnetUri));
 
+// IPC Handlers - Multimedia Streaming Operations
+ipcMain.handle('get-file-stream', (event, magnetUri, fileName) => torrentManager.getFileStream(magnetUri, fileName));
+ipcMain.handle('get-file-blob-url', (event, magnetUri, fileName) => torrentManager.getFileBlobURL(magnetUri, fileName));
+ipcMain.handle('get-file-info', (event, magnetUri, fileName) => torrentManager.getFileInfo(magnetUri, fileName));
+
 ipcMain.handle('remove-torrent', (event, magnetUri) => torrentManager.removeTorrent(magnetUri));
 ipcMain.handle('get-torrent-stats', () => torrentManager.getTorrentStats());
 

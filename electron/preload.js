@@ -14,6 +14,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadFile: (magnetUri, fileName) => ipcRenderer.invoke('download-file', magnetUri, fileName),
   pauseTorrent: (magnetUri) => ipcRenderer.invoke('pause-torrent', magnetUri),
   
+  // Multimedia streaming operations
+  getFileStream: (magnetUri, fileName) => ipcRenderer.invoke('get-file-stream', magnetUri, fileName),
+  getFileBlobURL: (magnetUri, fileName) => ipcRenderer.invoke('get-file-blob-url', magnetUri, fileName),
+  getFileInfo: (magnetUri, fileName) => ipcRenderer.invoke('get-file-info', magnetUri, fileName),
+  
   removeTorrent: (magnetUri) => ipcRenderer.invoke('remove-torrent', magnetUri),
   getTorrentStats: () => ipcRenderer.invoke('get-torrent-stats'),
 

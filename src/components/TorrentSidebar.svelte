@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { Pause, Play, ExternalLink, Trash2, ChevronDown, ChevronRight, Folder } from 'lucide-svelte';
+  import { Pause, Play, ExternalLink, Trash2, ChevronDown, ChevronRight, Folder, Volume2, VolumeX, Maximize2, Minimize2, X } from 'lucide-svelte';
   import { torrentStore } from '../stores/torrentStore.js';
   import { persistenceStore } from '../stores/persistenceStore.js';
 
@@ -11,6 +11,19 @@
   let sidebarWidth = 500;
   let resizing = false;
   let sidebarElement;
+
+  // Media Player State
+  let mediaPlayerOpen = false;
+  let currentMediaFile = null;
+  let currentTorrent = null;
+  let videoElement;
+  let audioElement;
+  let isPlaying = false;
+  let isMuted = false;
+  let volume = 1.0;
+  let currentTime = 0;
+  let duration = 0;
+  let isFullscreen = false;
 
   // Subscribe to torrent store
   const unsubscribe = torrentStore.subscribe(state => {
@@ -194,16 +207,201 @@
     return formatBytes(bytesPerSecond) + '/s';
   }
 
+  // Media Player Functions
+  function toggleMediaPlayer() {
+    mediaPlayerOpen = !mediaPlayerOpen;
+    if (!mediaPlayerOpen) {
+      stopMedia();
+    }
+  }
+
+  function stopMedia() {
+    if (videoElement) {
+      videoElement.pause();
+      videoElement.src = '';
+    }
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.src = '';
+    }
+    isPlaying = false;
+    currentMediaFile = null;
+    currentTorrent = null;
+  }
+
+  async function streamMediaFile(torrent, file) {
+    try {
+      // Check if file has any progress
+      if (torrent.progress === 0) {
+        addLog(`Cannot stream: ${file.name} - not yet downloaded`, 'warning');
+        return;
+      }
+
+      // Stop any currently playing media
+      stopMedia();
+      
+      currentTorrent = torrent;
+      currentMediaFile = file;
+      mediaPlayerOpen = true;
+
+      addLog(`Starting stream: ${file.name}`, 'info');
+
+      // Get the WebTorrent file object from the main process
+      if (window.electronAPI) {
+        const fileStream = await window.electronAPI.getFileStream(torrent.magnetUri, file.name);
+        if (fileStream) {
+          const isVideo = file.name.match(/\.(mp4|webm|avi|mkv|mov|flv)$/i);
+          const isAudio = file.name.match(/\.(mp3|wav|flac|ogg|m4a|aac)$/i);
+          
+          if (isVideo) {
+            videoElement.src = fileStream;
+            videoElement.style.display = 'block';
+            if (audioElement) audioElement.style.display = 'none';
+            addLog(`Video streaming: ${file.name}`, 'success');
+          } else if (isAudio) {
+            audioElement.src = fileStream;
+            audioElement.style.display = 'block';
+            if (videoElement) videoElement.style.display = 'none';
+            addLog(`Audio streaming: ${file.name}`, 'success');
+          } else {
+            addLog(`Unsupported media format: ${file.name}`, 'warning');
+          }
+        } else {
+          addLog(`Failed to get stream for: ${file.name}`, 'error');
+        }
+      } else {
+        addLog('Electron API not available', 'error');
+      }
+    } catch (error) {
+      console.error('Streaming error:', error);
+      addLog(`Streaming error: ${error.message}`, 'error');
+    }
+  }
+
+  async function previewImage(torrent, file) {
+    try {
+      // Check if file has any progress
+      if (torrent.progress === 0) {
+        addLog(`Cannot preview: ${file.name} - not yet downloaded`, 'warning');
+        return;
+      }
+
+      addLog(`Loading preview: ${file.name}`, 'info');
+
+      if (window.electronAPI) {
+        const imageUrl = await window.electronAPI.getFileBlobURL(torrent.magnetUri, file.name);
+        if (imageUrl) {
+          window.open(imageUrl, '_blank');
+          addLog(`Preview opened: ${file.name}`, 'success');
+        } else {
+          addLog(`Failed to get preview for: ${file.name}`, 'error');
+        }
+      } else {
+        addLog('Electron API not available', 'error');
+      }
+    } catch (error) {
+      console.error('Preview error:', error);
+      addLog(`Preview error: ${error.message}`, 'error');
+    }
+  }
+
+  function togglePlayPause() {
+    const mediaElement = videoElement?.style.display !== 'none' ? videoElement : audioElement;
+    if (mediaElement) {
+      if (isPlaying) {
+        mediaElement.pause();
+      } else {
+        mediaElement.play();
+      }
+      isPlaying = !isPlaying;
+    }
+  }
+
+  function toggleMute() {
+    const mediaElement = videoElement?.style.display !== 'none' ? videoElement : audioElement;
+    if (mediaElement) {
+      mediaElement.muted = !isMuted;
+      isMuted = !isMuted;
+    }
+  }
+
+  function setVolume(newVolume) {
+    volume = Math.max(0, Math.min(1, newVolume));
+    const mediaElement = videoElement?.style.display !== 'none' ? videoElement : audioElement;
+    if (mediaElement) {
+      mediaElement.volume = volume;
+    }
+  }
+
+  function toggleFullscreen() {
+    const mediaElement = videoElement?.style.display !== 'none' ? videoElement : audioElement;
+    if (mediaElement) {
+      if (!isFullscreen) {
+        if (mediaElement.requestFullscreen) {
+          mediaElement.requestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+      isFullscreen = !isFullscreen;
+    }
+  }
+
+  function updateProgress() {
+    const mediaElement = videoElement?.style.display !== 'none' ? videoElement : audioElement;
+    if (mediaElement) {
+      currentTime = mediaElement.currentTime;
+      duration = mediaElement.duration || 0;
+    }
+  }
+
+  function seekTo(time) {
+    const mediaElement = videoElement?.style.display !== 'none' ? videoElement : audioElement;
+    if (mediaElement && !isNaN(time)) {
+      mediaElement.currentTime = time;
+    }
+  }
+
+  function formatTime(seconds) {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
   function getFileIcon(fileName) {
     const ext = fileName.toLowerCase().split('.').pop();
     const videoExtensions = ['mp4', 'avi', 'mkv', 'mov', 'webm', 'flv'];
     const audioExtensions = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac'];
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg'];
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
     
     if (videoExtensions.includes(ext)) return '🎬';
     if (audioExtensions.includes(ext)) return '🎵';
     if (imageExtensions.includes(ext)) return '🖼️';
     return '📄';
+  }
+
+  function isStreamableFile(fileName) {
+    const ext = fileName.toLowerCase().split('.').pop();
+    const videoExtensions = ['mp4', 'avi', 'mkv', 'mov', 'webm', 'flv'];
+    const audioExtensions = ['mp3', 'wav', 'flac', 'ogg', 'm4a', 'aac'];
+    return videoExtensions.includes(ext) || audioExtensions.includes(ext);
+  }
+
+  function isPreviewableFile(fileName) {
+    const ext = fileName.toLowerCase().split('.').pop();
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
+    return imageExtensions.includes(ext);
+  }
+
+  function canStreamFile(torrent, file) {
+    return torrent.progress > 0 && isStreamableFile(file.name);
+  }
+
+  function canPreviewFile(torrent, file) {
+    return torrent.progress > 0 && isPreviewableFile(file.name);
   }
 
   // Calculate total stats
@@ -241,6 +439,122 @@
           {/if}
           {#if totalStats.downloading > 0}
             <span>{totalStats.downloading} Active</span>
+          {/if}
+        </div>
+      {/if}
+    </div>
+
+    <!-- Media Player Section -->
+    <div class="media-player-section">
+      <div class="media-player-header" on:click={toggleMediaPlayer}>
+        <div class="media-player-title">
+          {#if currentMediaFile}
+            <span class="media-icon">🎬</span>
+            <span class="media-name">{currentMediaFile.name}</span>
+          {:else}
+            <span class="media-icon">📺</span>
+            <span class="media-name">Media Player</span>
+          {/if}
+        </div>
+        <button class="media-toggle-btn">
+          {#if mediaPlayerOpen}
+            <ChevronDown size={16} />
+          {:else}
+            <ChevronRight size={16} />
+          {/if}
+        </button>
+      </div>
+
+      {#if mediaPlayerOpen}
+        <div class="media-player-content">
+          <!-- Video Player -->
+          <video 
+            bind:this={videoElement}
+            class="media-video"
+            style="display: none;"
+            on:timeupdate={updateProgress}
+            on:loadedmetadata={updateProgress}
+            on:ended={() => isPlaying = false}
+            controls={false}
+          ></video>
+
+          <!-- Audio Player -->
+          <audio 
+            bind:this={audioElement}
+            class="media-audio"
+            style="display: none;"
+            on:timeupdate={updateProgress}
+            on:loadedmetadata={updateProgress}
+            on:ended={() => isPlaying = false}
+            controls={false}
+          ></audio>
+
+          <!-- Media Controls -->
+          {#if currentMediaFile}
+            <div class="media-controls">
+              <!-- Progress Bar -->
+              <div class="progress-bar-container">
+                <input 
+                  type="range" 
+                  class="progress-slider"
+                  min="0" 
+                  max={duration || 0} 
+                  value={currentTime}
+                  on:input={(e) => seekTo(parseFloat(e.target.value))}
+                />
+                <div class="time-display">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
+
+              <!-- Control Buttons -->
+              <div class="control-buttons">
+                <button class="control-btn" on:click={togglePlayPause} title={isPlaying ? 'Pause' : 'Play'}>
+                  {#if isPlaying}
+                    <Pause size={16} />
+                  {:else}
+                    <Play size={16} />
+                  {/if}
+                </button>
+
+                <button class="control-btn" on:click={toggleMute} title={isMuted ? 'Unmute' : 'Mute'}>
+                  {#if isMuted}
+                    <VolumeX size={16} />
+                  {:else}
+                    <Volume2 size={16} />
+                  {/if}
+                </button>
+
+                <input 
+                  type="range" 
+                  class="volume-slider"
+                  min="0" 
+                  max="1" 
+                  step="0.1"
+                  value={volume}
+                  on:input={(e) => setVolume(parseFloat(e.target.value))}
+                  title="Volume"
+                />
+
+                <button class="control-btn" on:click={toggleFullscreen} title="Fullscreen">
+                  {#if isFullscreen}
+                    <Minimize2 size={16} />
+                  {:else}
+                    <Maximize2 size={16} />
+                  {/if}
+                </button>
+
+                <button class="control-btn close-btn" on:click={stopMedia} title="Stop">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          {:else}
+            <div class="media-placeholder">
+              <div class="placeholder-icon">🎬</div>
+              <p>Select a media file to stream</p>
+            </div>
           {/if}
         </div>
       {/if}
@@ -344,12 +658,45 @@
                           <span class="file-icon">{getFileIcon(file.name)}</span>
                           <span class="file-name">{file.name}</span>
                           <span class="file-size">{formatBytes(file.length)}</span>
-                          {#if torrent.progress > 0}
-                            <button class="file-btn" on:click={() => handleDownloadFile(torrent, file)}>
-                              <Folder size={12} />
-                              Save
-                            </button>
-                          {/if}
+                          <div class="file-actions">
+                            {#if torrent.progress > 0}
+                              <!-- Video/Audio Stream Button -->
+                              {#if isStreamableFile(file.name)}
+                                <button 
+                                  class="file-btn stream-btn {!canStreamFile(torrent, file) ? 'disabled' : ''}" 
+                                  on:click={() => canStreamFile(torrent, file) && streamMediaFile(torrent, file)}
+                                  title={canStreamFile(torrent, file) ? 'Stream' : 'Not ready for streaming'}
+                                  disabled={!canStreamFile(torrent, file)}
+                                >
+                                  🎬 Stream
+                                </button>
+                              {/if}
+                              
+                              <!-- Image Preview Button -->
+                              {#if isPreviewableFile(file.name)}
+                                <button 
+                                  class="file-btn preview-btn {!canPreviewFile(torrent, file) ? 'disabled' : ''}" 
+                                  on:click={() => canPreviewFile(torrent, file) && previewImage(torrent, file)}
+                                  title={canPreviewFile(torrent, file) ? 'Preview' : 'Not ready for preview'}
+                                  disabled={!canPreviewFile(torrent, file)}
+                                >
+                                  👁️ Preview
+                                </button>
+                              {/if}
+                              
+                              <!-- Save Button (for all files) -->
+                              <button 
+                                class="file-btn save-btn" 
+                                on:click={() => handleDownloadFile(torrent, file)}
+                                title="Save to disk"
+                              >
+                                <Folder size={12} />
+                                Save
+                              </button>
+                            {:else}
+                              <span class="file-status">Waiting for download...</span>
+                            {/if}
+                          </div>
                         </div>
                       {/each}
                     </div>
@@ -683,6 +1030,12 @@
     text-align: right;
   }
 
+  .file-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
   .file-btn {
     background: #3b82f6;
     color: white;
@@ -694,9 +1047,251 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    transition: all 0.1s;
   }
 
-  .file-btn:hover {
+  .file-btn:hover:not(:disabled) {
     background: #2563eb;
+  }
+
+  .file-btn:disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .file-btn.disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .file-status {
+    font-size: 10px;
+    color: #9ca3af;
+    font-style: italic;
+  }
+
+  .stream-btn {
+    background: #10b981;
+  }
+
+  .stream-btn:hover:not(:disabled) {
+    background: #059669;
+  }
+
+  .preview-btn {
+    background: #f59e0b;
+  }
+
+  .preview-btn:hover:not(:disabled) {
+    background: #d97706;
+  }
+
+  .save-btn {
+    background: #6b7280;
+  }
+
+  .save-btn:hover:not(:disabled) {
+    background: #4b5563;
+  }
+
+  /* Media Player Section */
+  .media-player-section {
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .media-player-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+
+  .media-player-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .media-icon {
+    font-size: 16px;
+  }
+
+  .media-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+  }
+
+  .media-toggle-btn {
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: 4px;
+    transition: all 0.1s;
+  }
+
+  .media-toggle-btn:hover {
+    background: #e5e7eb;
+    color: #374151;
+  }
+
+  .media-player-content {
+    padding: 16px;
+    background: white;
+  }
+
+  .media-video, .media-audio {
+    width: 100%;
+    max-height: 200px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .media-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .progress-bar-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .progress-slider {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: #e5e7eb;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .progress-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+  }
+
+  .progress-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+  }
+
+  .time-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .control-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .control-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    background: #f3f4f6;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .control-btn:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  .close-btn:hover {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+
+  .volume-slider {
+    width: 60px;
+    height: 4px;
+    border-radius: 2px;
+    background: #e5e7eb;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #6b7280;
+    cursor: pointer;
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #6b7280;
+    cursor: pointer;
+    border: none;
+  }
+
+  .media-placeholder {
+    text-align: center;
+    padding: 32px 16px;
+    color: #6b7280;
+  }
+
+  .placeholder-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+
+  .media-placeholder p {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 400px) {
+    .file-actions {
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    .file-btn {
+      font-size: 9px;
+      padding: 2px 6px;
+    }
+    
+    .media-name {
+      max-width: 150px;
+    }
   }
 </style>
