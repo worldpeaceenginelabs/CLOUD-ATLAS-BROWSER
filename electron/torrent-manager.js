@@ -12,7 +12,8 @@ class TorrentManager {
     this.mainWindow = null;
     this.pausedTorrents = new Map(); // Store paused torrent info
     this.activeTorrentPaths = new Map(); // Store active torrent paths from download events
-    this.activeTorrents = new Map(); // Store active torrent objects from download events
+    this.activeTorrents = new Map(); // Store active torrent objects from download events - NOW A STREAMABLE TORRENTS REGISTRY
+    this.torrentInfoMap = new Map(); // Store torrent info by infoHash for reliable lookup
     this.httpServer = null;
     this.httpPort = 18080; // You can randomize or increment if needed
   }
@@ -59,18 +60,89 @@ class TorrentManager {
         const fileName = decodeURIComponent(match[2]);
         
         console.log(`Stream request: ${infoHash} - ${fileName}`);
-        console.log(`Available torrents:`, Array.from(this.activeTorrents.keys()));
+        console.log(`Available torrents in registry:`, Array.from(this.activeTorrents.keys()));
+        console.log(`Available torrent info:`, Array.from(this.torrentInfoMap.keys()));
         
-        // Use stored torrent object from download events (more reliable)
-        const torrent = this.activeTorrents.get(infoHash);
-        if (!torrent) {
-          console.log(`Torrent not found in activeTorrents: ${infoHash}`);
-          res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
-          res.end('Torrent not found or not yet downloading');
-          return;
+        // Debug: Show all torrent info entries
+        console.log('=== DEBUG: All torrent info entries ===');
+        for (const [hash, info] of this.torrentInfoMap.entries()) {
+          console.log(`Hash: ${hash}, Name: ${info.name}, Magnet: ${info.magnetUri}`);
+        }
+        console.log('=== END DEBUG ===');
+        
+        // First try to get torrent object from active torrents
+        let torrent = this.activeTorrents.get(infoHash);
+        
+        // If not found in active torrents, or if torrent has no files (paused), try to get from torrent info map
+        if (!torrent || !torrent.files || torrent.files.length === 0) {
+          const torrentInfo = this.torrentInfoMap.get(infoHash);
+          if (torrentInfo) {
+            console.log(`Found torrent info for paused torrent: ${torrentInfo.name}`);
+            // For paused torrents, we need to check if files exist on disk
+            const filePath = path.join(torrentInfo.path, torrentInfo.name, fileName);
+            console.log(`Looking for file at: ${filePath}`);
+            if (fs.existsSync(filePath)) {
+              // Create a file-like object for streaming
+              const stats = fs.statSync(filePath);
+              const file = {
+                name: fileName,
+                length: stats.size,
+                downloaded: stats.size, // Assume fully downloaded if file exists
+                createReadStream: (options) => {
+                  return fs.createReadStream(filePath, options);
+                }
+              };
+              
+              console.log(`Serving paused torrent file: ${fileName} (${file.length} bytes)`);
+              
+              // Support HTTP Range requests
+              const range = req.headers.range;
+              const fileLength = file.length;
+              let start = 0;
+              let end = fileLength - 1;
+              if (range) {
+                const match = range.match(/bytes=(\d+)-(\d*)/);
+                if (match) {
+                  start = parseInt(match[1], 10);
+                  if (match[2]) end = parseInt(match[2], 10);
+                }
+              }
+              if (start > end || start < 0 || end >= fileLength) {
+                res.writeHead(416, { 'Content-Range': `bytes */${fileLength}`, 'Access-Control-Allow-Origin': '*' });
+                res.end();
+                return;
+              }
+              res.writeHead(range ? 206 : 200, {
+                'Content-Type': this.getMimeType(fileName),
+                'Content-Length': end - start + 1,
+                'Accept-Ranges': 'bytes',
+                'Content-Range': range ? `bytes ${start}-${end}/${fileLength}` : undefined,
+                'Access-Control-Allow-Origin': '*'
+              });
+              const stream = file.createReadStream({ start, end });
+              stream.pipe(res);
+              stream.on('error', err => {
+                console.error(`Stream error for ${fileName}:`, err);
+                res.end();
+              });
+              return;
+            } else {
+              console.log(`File not found on disk for paused torrent: ${filePath}`);
+              res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+              res.end('File not found on disk');
+              return;
+            }
+          } else {
+            console.log(`Torrent not found in streamable torrents registry: ${infoHash}`);
+            console.log(`Searched in activeTorrents: ${this.activeTorrents.has(infoHash)}`);
+            console.log(`Searched in torrentInfoMap: ${this.torrentInfoMap.has(infoHash)}`);
+            res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+            res.end('Torrent not found or not yet downloading');
+            return;
+          }
         }
         
-        console.log(`Found torrent: ${torrent.name} with ${torrent.files?.length || 0} files`);
+        console.log(`Found torrent in registry: ${torrent.name} with ${torrent.files?.length || 0} files`);
         
         const file = torrent.files.find(f => f.name === fileName);
         if (!file) {
@@ -80,7 +152,15 @@ class TorrentManager {
           return;
         }
         
-        console.log(`Serving file: ${fileName} (${file.length} bytes)`);
+        // Check if file has any downloaded content (works for both active and paused torrents)
+        if (file.downloaded === 0) {
+          console.log(`File has no downloaded content: ${fileName}`);
+          res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+          res.end('File not yet downloaded');
+          return;
+        }
+        
+        console.log(`Serving file: ${fileName} (${file.length} bytes, ${file.downloaded} downloaded)`);
         
         // Support HTTP Range requests
         const range = req.headers.range;
@@ -193,9 +273,30 @@ class TorrentManager {
           }
           
           // Store the torrent object itself when it's reliable (during download)
+          // KEEP IN STREAMABLE TORRENTS REGISTRY - never remove from here until complete removal
           if (torrent.infoHash) {
             this.activeTorrents.set(torrent.infoHash, torrent);
-            console.log(`Stored torrent for streaming: ${torrent.name} (${torrent.infoHash})`);
+            
+            // Store torrent info for reliable lookup when paused - ONLY during download event (reliable source)
+            this.torrentInfoMap.set(torrent.infoHash, {
+              name: torrent.name,
+              path: torrent.path,
+              magnetUri: magnetUri,
+              files: torrent.files ? torrent.files.map(f => ({
+                name: f.name,
+                length: f.length,
+                path: f.path
+              })) : []
+            });
+            
+            console.log(`Added torrent to streamable registry: ${torrent.name} (${torrent.infoHash})`);
+            console.log(`DEBUG: Stored torrent info for ${torrent.infoHash}:`, {
+              name: torrent.name,
+              path: torrent.path,
+              magnetUri: magnetUri,
+              filesCount: torrent.files ? torrent.files.length : 0
+            });
+            console.log(`DEBUG: torrentInfoMap now has ${this.torrentInfoMap.size} entries`);
           } else {
             console.warn(`Torrent ${torrent.name} has no infoHash available yet`);
           }
@@ -425,7 +526,7 @@ class TorrentManager {
     }
   }
 
-  // Pause a torrent (FIXED - uses stored path info from download events)
+  // Pause a torrent (MODIFIED - keeps torrent in activeTorrents for streaming)
   async pauseTorrent(magnetUri) {
     try {
       const torrent = this.client.get(magnetUri);
@@ -452,10 +553,14 @@ class TorrentManager {
           // Remove from active paths since it's being paused
           this.activeTorrentPaths.delete(magnetUri);
           
+          // IMPORTANT: DO NOT REMOVE FROM activeTorrents - keep it in streamable registry
+          // Torrent info is already stored in torrentInfoMap during download event (reliable source)
+          console.log(`Torrent paused but kept in streamable registry: ${torrent.name} (${torrent.infoHash})`);
+          
           return new Promise((resolve) => {
             this.client.remove(magnetUri, { destroyStore: false }, (err) => {
               if (!err) {
-                console.log('Torrent paused (removed from client, files preserved):', magnetUri);
+                console.log('Torrent paused (removed from client, files preserved, kept in streamable registry):', magnetUri);
                 console.log('Stored torrent info for potential cleanup:', torrentInfo.downloadPath);
                 resolve(true);
               } else {
@@ -504,7 +609,7 @@ class TorrentManager {
     }
   }
 
-  // Remove a torrent (handles both active and paused torrents with consistent cleanup)
+  // Remove a torrent (MODIFIED - removes from streamable registry only on complete removal)
   async removeTorrent(magnetUri) {
     try {
       // Handle paused torrents (not in client but files on disk)
@@ -528,6 +633,26 @@ class TorrentManager {
         
         // Remove from paused torrents tracking
         this.pausedTorrents.delete(magnetUri);
+        
+        // IMPORTANT: Remove from streamable torrents registry when completely removed
+        // Find the torrent by magnet URI in activeTorrents and torrentInfoMap
+        for (const [infoHash, torrent] of this.activeTorrents.entries()) {
+          if (torrent.magnetURI === magnetUri) {
+            this.activeTorrents.delete(infoHash);
+            console.log(`Removed paused torrent from streamable registry: ${infoHash}`);
+            break;
+          }
+        }
+        
+        // Also remove from torrentInfoMap
+        for (const [infoHash, info] of this.torrentInfoMap.entries()) {
+          if (info.magnetUri === magnetUri) {
+            this.torrentInfoMap.delete(infoHash);
+            console.log(`Removed paused torrent from info map: ${infoHash}`);
+            break;
+          }
+        }
+        
         console.log('Paused torrent removed from tracking:', magnetUri);
         return true;
       }
@@ -584,6 +709,13 @@ class TorrentManager {
               
               // Clean up tracking
               this.activeTorrentPaths.delete(magnetUri);
+              
+              // IMPORTANT: Remove from streamable torrents registry when completely removed
+              if (torrent.infoHash) {
+                this.activeTorrents.delete(torrent.infoHash);
+                this.torrentInfoMap.delete(torrent.infoHash);
+                console.log(`Removed active torrent from streamable registry: ${torrent.infoHash}`);
+              }
               
               resolve(true);
             } else {
@@ -645,6 +777,8 @@ class TorrentManager {
     // Clear tracking maps
     this.pausedTorrents.clear();
     this.activeTorrentPaths.clear();
+    this.activeTorrents.clear(); // Clear streamable torrents registry
+    this.torrentInfoMap.clear(); // Clear torrent info map
     console.log('Torrent tracking cleared');
   }
 }
