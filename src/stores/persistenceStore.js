@@ -57,8 +57,8 @@ class PersistenceStore {
     return new Promise((resolve, reject) => {
       const transaction = this.db.transaction(['torrents'], 'readonly');
       const store = transaction.objectStore('torrents');
-      const index = store.index('infoHash');
-      const request = index.get(infoHash.toLowerCase());
+      // Query directly by key since infoHash is the keyPath
+      const request = store.get(infoHash.toLowerCase());
       
       request.onsuccess = () => {
         resolve(!!request.result);
