@@ -156,13 +156,10 @@ ipcMain.handle('close-browser-view', (event, viewId) => {
 ipcMain.handle('navigate-browser-view', (event, viewId, url) => browserManager.navigateBrowserView(viewId, url));
 ipcMain.handle('reload-browser-view', (event, viewId) => browserManager.reloadBrowserView(viewId));
 ipcMain.handle('create-new-tab-with-url', async (event, url) => {
-  // Create new browser view and set it as active
-  const viewId = await browserManager.createBrowserView(url);
-  if (viewId) {
-    await browserManager.setActiveBrowserView(viewId);
-    return viewId;
-  }
-  return null;
+  // Send event to renderer to create a new tab with this URL
+  // The renderer will handle tab creation and browser view management
+  event.sender.send('create-new-tab-with-url', url);
+  return true;
 });
 
 // IPC Handlers - Navigation
