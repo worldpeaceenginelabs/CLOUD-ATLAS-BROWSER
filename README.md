@@ -4,7 +4,7 @@
 > A decentralized, peer-to-peer browser that replaces DNS, hosting, and servers with keypair signed whitelists, magnet links, WebTorrent, and WebRTC.  
 > 🚫 No surveillance. 🚫 No middlemen. 🚫 No gatekeepers. 🚫 No servers required. 🚫 No backdoors. Just code, peers, and signal.
 
----
+<br><br>
 
 ## ⚡ What is it?
 
@@ -12,6 +12,8 @@
 
 **💡 Why Svelte?**  
 *Explainer at the end of this document. You’ll never go back—promise!*
+
+<br><br>
 
 ## 🧠 Core Features
 
@@ -33,7 +35,7 @@ It empowers users to:
 - 📚 Discover approved dApps via the keypair signed **whitelist**
 - 🔗 Seamlessly connect to and power the **Cloud Atlas OS**
 
----
+<br><br>
 
 ## 🔧 Feature Table
 
@@ -55,6 +57,7 @@ It empowers users to:
 | 📚 Whitelist Browser        | Curated magnet apps searchable from within the browser                     |
 | 🔗 Cloud Atlas OS Bridge    | Acts as a node and launcher for the full Cloud Atlas OS                    |
 
+<br><br>
 
 ## 🛠️ Tech Stack
 
@@ -65,13 +68,20 @@ It empowers users to:
 - 🔐 **Nostr** – Keypair-based auth
 - 🔥 **WebContainer** – Run dev environments in-browser
 
----
+<br><br>
 
-Absolutely — here’s your section rewritten in **clean GitHub-flavored Markdown**, with code blocks, structure, and comments that match GitHub’s README best practices:
+## 🔒 Security
 
----
+We leverage the **Electron and Chrome team’s ongoing Chromium patch pipeline**, meaning:
 
-````markdown
+- ✅ No need to maintain our own browser engine
+- ✅ All V8, WebRTC, and rendering bugs patched upstream
+- ✅ Chromium sandboxing and TLS security included out-of-the-box
+
+> ⚠️ Unlike most “decentralized” stacks, **Cloud Atlas Browser is secure by design**, without sacrificing power.
+
+<br><br>
+
 ## 🚀 Getting Started – 🛠 Development
 
 ### Run in Development Mode
@@ -86,31 +96,7 @@ This will:
 * Wait for the frontend to be ready on port `5173`
 * Launch Electron with `IS_DEV=true` for dev mode
 
----
-
-## 📦 Build for Production
-
-### Build the frontend and package the app
-
-```bash
-npm run build
-```
-
-This will:
-
-* Build the Svelte/Vite frontend into `/dist`
-* Package the Electron app using `electron-builder`
-* Output binaries into the `/release` folder
-
----
-
-### (Optional) Preview the final build locally
-
-```bash
-npm run electron:preview
-```
-
-This runs the latest build using Electron, **without hot reload**.
+<br><br>
 
 ## Contributing
 
@@ -120,6 +106,8 @@ This runs the latest build using Electron, **without hot reload**.
 4. Test thoroughly
 5. Submit a pull request
 
+<br><br>
+
 ## Support
 
 For issues and questions:
@@ -127,6 +115,8 @@ For issues and questions:
 1. Check the console output in developer tools
 2. Review the application logs
 3. File issues with detailed reproduction steps
+
+<br><br>
 
 ### Enhanced Security Implementation (coming soon)
 Content Security Policy (CSP):
@@ -176,17 +166,20 @@ Monitoring & Debugging:
 ✅ Protocol Security: Safe handling of magnet links and web content
 ✅ Update Security: Signed updates with integrity verification
 
-
----
+<br><br>
 
 ## 🧾 Developer Note: What Svelte Actually Is (and Isn’t)
 
 Before we go any further:  
 **Svelte is not a language** (yet). It’s best described as a **frontend compiler + WYSIWYG-like dev experience** that just *feels* like a new language.
 
+<br><br>
+
 ## ✅ “Know JavaScript? You already know Svelte.”
 
 ![image](https://github.com/user-attachments/assets/b7a2321a-c68b-4807-a1a7-1417e9b2eb48)
+
+<br><br>
 
 ### 🧠 Here’s the truth:
 
@@ -200,7 +193,7 @@ Svelte’s structure feels clean and expressive:
 - Bindings and reactivity are native to the syntax  
 - It’s **JS-first**, not opinionated or bloated
 
----
+<br><br>
 
 ## 💡 Why We Use Svelte for Cloud Atlas
 
@@ -208,6 +201,7 @@ Cloud Atlas Browser and OS are designed according to the JAM stack to run **in t
 
 ```bash
 npm create vite@latest
+````
 
 # Choose 'Svelte' and then 'JavaScript' or 'TypeScript' when prompted
 
