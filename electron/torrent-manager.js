@@ -12,6 +12,7 @@ class TorrentManager {
     this.mainWindow = null;
     this.pausedTorrents = new Map(); // Store paused torrent info
     this.activeTorrentPaths = new Map(); // Store active torrent paths from download events
+    this.activeTorrents = new Map(); // Store active torrent objects from download events
     this.httpServer = null;
     this.httpPort = 18080; // You can randomize or increment if needed
   }
@@ -56,18 +57,31 @@ class TorrentManager {
       if (match) {
         const infoHash = match[1].toLowerCase();
         const fileName = decodeURIComponent(match[2]);
-        const torrent = this.client.get(infoHash);
+        
+        console.log(`Stream request: ${infoHash} - ${fileName}`);
+        console.log(`Available torrents:`, Array.from(this.activeTorrents.keys()));
+        
+        // Use stored torrent object from download events (more reliable)
+        const torrent = this.activeTorrents.get(infoHash);
         if (!torrent) {
+          console.log(`Torrent not found in activeTorrents: ${infoHash}`);
           res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
-          res.end('Torrent not found');
+          res.end('Torrent not found or not yet downloading');
           return;
         }
+        
+        console.log(`Found torrent: ${torrent.name} with ${torrent.files?.length || 0} files`);
+        
         const file = torrent.files.find(f => f.name === fileName);
         if (!file) {
+          console.log(`File not found: ${fileName}`);
           res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
           res.end('File not found');
           return;
         }
+        
+        console.log(`Serving file: ${fileName} (${file.length} bytes)`);
+        
         // Support HTTP Range requests
         const range = req.headers.range;
         const fileLength = file.length;
@@ -95,6 +109,7 @@ class TorrentManager {
         const stream = file.createReadStream({ start, end });
         stream.pipe(res);
         stream.on('error', err => {
+          console.error(`Stream error for ${fileName}:`, err);
           res.end();
         });
       } else {
@@ -175,6 +190,14 @@ class TorrentManager {
               path: torrent.path,
               downloadPath: path.join(torrent.path, torrent.name)
             });
+          }
+          
+          // Store the torrent object itself when it's reliable (during download)
+          if (torrent.infoHash) {
+            this.activeTorrents.set(torrent.infoHash, torrent);
+            console.log(`Stored torrent for streaming: ${torrent.name} (${torrent.infoHash})`);
+          } else {
+            console.warn(`Torrent ${torrent.name} has no infoHash available yet`);
           }
           
           const progressData = {

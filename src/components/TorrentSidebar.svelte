@@ -1,5 +1,5 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { Pause, Play, ExternalLink, Trash2, ChevronDown, ChevronRight, Folder, Volume2, VolumeX, Maximize2, Minimize2, X } from 'lucide-svelte';
   import { torrentStore } from '../stores/torrentStore.js';
   import { persistenceStore } from '../stores/persistenceStore.js';
@@ -234,25 +234,39 @@
         addLog(`Cannot stream: ${file.name} - not yet downloaded`, 'warning');
         return;
       }
+      
       stopMedia();
       currentTorrent = torrent;
       currentMediaFile = file;
       mediaPlayerOpen = true;
+      
+      // Wait for the next tick to ensure DOM elements are rendered
+      await tick();
+      
       addLog(`Starting stream: ${file.name}`, 'info');
       // Use local HTTP server URL
       const url = `http://127.0.0.1:18080/stream/${torrent.infoHash}/${encodeURIComponent(file.name)}`;
       const isVideo = file.name.match(/\.(mp4|webm|avi|mkv|mov|flv)$/i);
       const isAudio = file.name.match(/\.(mp3|wav|flac|ogg|m4a|aac)$/i);
+      
       if (isVideo) {
-        videoElement.src = url;
-        videoElement.style.display = 'block';
-        if (audioElement) audioElement.style.display = 'none';
-        addLog(`Video streaming: ${file.name}`, 'success');
+        if (videoElement) {
+          videoElement.src = url;
+          videoElement.style.display = 'block';
+          if (audioElement) audioElement.style.display = 'none';
+          addLog(`Video streaming: ${file.name}`, 'success');
+        } else {
+          addLog(`Video element not available`, 'error');
+        }
       } else if (isAudio) {
-        audioElement.src = url;
-        audioElement.style.display = 'block';
-        if (videoElement) videoElement.style.display = 'none';
-        addLog(`Audio streaming: ${file.name}`, 'success');
+        if (audioElement) {
+          audioElement.src = url;
+          audioElement.style.display = 'block';
+          if (videoElement) videoElement.style.display = 'none';
+          addLog(`Audio streaming: ${file.name}`, 'success');
+        } else {
+          addLog(`Audio element not available`, 'error');
+        }
       } else {
         addLog(`Unsupported media format: ${file.name}`, 'warning');
       }
