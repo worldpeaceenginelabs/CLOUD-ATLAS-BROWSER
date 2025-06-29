@@ -245,7 +245,7 @@
   }
 
   .address-input-container {
-    background: var(--chrome-address-bar);
+    background: #2b2b2b;
     border: 1px solid var(--chrome-border);
     border-radius: 24px;
     height: 32px;

@@ -76,7 +76,7 @@ html, body {
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   height: 32px;
-  min-width: 120px;
+  min-width: 240px;
   max-width: 240px;
   margin-right: 1px;
   display: flex;
@@ -121,8 +121,8 @@ html, body {
 }
 
 .address-input-container {
-  background: var(--chrome-address-bar);
-  border: 1px solid var(--chrome-border);
+  background: #2b2b2b;
+  border: 1px solid #444;
   border-radius: 24px;
   height: 32px;
   display: flex;
@@ -361,13 +361,7 @@ html, body {
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* Focus styles */
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--chrome-blue);
-  outline-offset: 2px;
-}
+
 
 /* Loading animation */
 @keyframes spin {

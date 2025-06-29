@@ -171,7 +171,7 @@
     border-bottom: none;
     border-radius: 8px 8px 0 0;
     height: 32px;
-    min-width: 120px;
+    min-width: 240px;
     max-width: 240px;
     margin-right: 1px;
     display: flex;
