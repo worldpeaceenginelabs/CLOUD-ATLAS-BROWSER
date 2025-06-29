@@ -419,13 +419,13 @@
 <style>
   .tab-content {
     transition: opacity 0.2s ease-in-out;
-    /* Clean centering */
+    /* Flexible layout instead of fixed centering */
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
     width: 100%;
     height: 100%;
-    overflow: auto;
+    overflow: hidden;
+    position: relative;
   }
   
   .tab-content.hidden {
@@ -451,6 +451,8 @@
 
   .web-content-active {
     position: relative;
+    flex: 1;
+    min-height: 0;
   }
 
   .loading-state {
@@ -481,16 +483,29 @@
     white-space: pre-wrap;
   }
 
-  /* Clean centering for all content containers */
+  /* Responsive content containers */
   .default-content,
   .seeding-container,
   .web-content-placeholder {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    
     width: 100%;
     height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  /* Ensure content is always accessible */
+  .default-content > div,
+  .seeding-container > div {
+    flex: 1;
     
+    justify-content: center;
+    align-items: center;
+    min-height: min-content;
+    padding: 1rem 0;
   }
 
   /* Modern Minimalistic Design Styles */
@@ -527,7 +542,7 @@
   }
 
   .hero-title {
-    font-size: 2.5rem;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
     font-weight: 700;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;
@@ -535,21 +550,25 @@
     background-clip: text;
     margin-bottom: 0.5rem;
     letter-spacing: -0.02em;
+    text-align: center;
   }
 
   .hero-subtitle {
-    font-size: 1.125rem;
+    font-size: clamp(0.875rem, 2vw, 1.125rem);
     color: #6b7280;
     font-weight: 400;
     margin: 0;
+    text-align: center;
   }
 
   /* Feature Cards */
   .features-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
     animation: slideUp 0.6s ease-out 0.1s both;
+    margin-bottom: 2rem;
+    flex-shrink: 0;
   }
 
   .feature-card {
@@ -759,13 +778,14 @@
 
   /* Responsive Design */
   @media (max-width: 768px) {
-    .hero-title {
-      font-size: 2rem;
+    .default-content,
+    .seeding-container {
+      padding: 0.75rem;
     }
     
     .features-grid {
       grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
+      gap: 0.75rem;
     }
     
     .magnet-container {
@@ -776,15 +796,87 @@
     .copy-btn {
       width: 100%;
     }
+
+    .step {
+      max-width: 300px;
+      padding: 0.5rem;
+    }
+
+    .feature-card {
+      padding: 1rem;
+    }
   }
 
   @media (max-width: 480px) {
+    .default-content,
+    .seeding-container {
+      padding: 0.5rem;
+    }
+
     .features-grid {
       grid-template-columns: 1fr;
+      gap: 0.75rem;
     }
     
     .hero-title {
       font-size: 1.75rem;
+    }
+
+    .step {
+      max-width: 280px;
+    }
+
+    .example-card {
+      padding: 1rem;
+    }
+  }
+
+  /* Additional responsive fixes for height */
+  @media (max-height: 600px) {
+    .default-content > div,
+    .seeding-container > div {
+      padding: 0.5rem 0;
+    }
+    
+    .hero-section {
+      margin-bottom: 1rem;
+    }
+    
+    .features-grid {
+      margin-bottom: 1rem;
+    }
+    
+    .quick-start-section {
+      margin-bottom: 1rem;
+    }
+    
+    .error-state,
+    .loading-state {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-height: 500px) {
+    .default-content,
+    .seeding-container {
+      padding: 0.25rem;
+    }
+    
+    .hero-icon {
+      margin-bottom: 0.75rem;
+    }
+    
+    .logo {
+      max-width: 100px;
+      max-height: 100px;
+    }
+    
+    .feature-card {
+      padding: 0.75rem;
+    }
+    
+    .step {
+      padding: 0.5rem;
     }
   }
 
