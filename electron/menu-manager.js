@@ -344,24 +344,29 @@ class MenuManager {
 
   // Setup application menu
   setupMenu() {
-    let template;
-
-    if (this.isDev) {
-      template = this.createDevelopmentMenuTemplate();
-      console.log('Setting up development menu');
-    } else {
-      template = this.createProductionMenuTemplate();
-      console.log('Setting up production menu');
-    }
-
-    // Apply macOS specific modifications
-    template = this.createMacOSMenuTemplate(template);
-
-    // Build and set the menu
-    const menu = Menu.buildFromTemplate(template);
-    Menu.setApplicationMenu(menu);
-
-    console.log('Application menu set up successfully');
+    // Disable menu completely
+    Menu.setApplicationMenu(null);
+    console.log('Application menu disabled');
+    
+    // Original code commented out:
+    // let template;
+    // 
+    // if (this.isDev) {
+    //   template = this.createDevelopmentMenuTemplate();
+    //   console.log('Setting up development menu');
+    // } else {
+    //   template = this.createProductionMenuTemplate();
+    //   console.log('Setting up production menu');
+    // }
+    // 
+    // // Apply macOS specific modifications
+    // template = this.createMacOSMenuTemplate(template);
+    // 
+    // // Build and set the menu
+    // const menu = Menu.buildFromTemplate(template);
+    // Menu.setApplicationMenu(menu);
+    // 
+    // console.log('Application menu set up successfully');
   }
 
   // Hide menu bar (for production builds)

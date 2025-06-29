@@ -181,6 +181,11 @@ ipcMain.handle('terminate-tab-process', (event, viewId) => browserManager.termin
 ipcMain.handle('reload-crashed-tab', (event, viewId, url) => browserManager.reloadCrashedTab(viewId, url));
 ipcMain.handle('get-all-processes-info', () => browserManager.getAllProcessesInfo());
 
+// IPC Handlers - Window Controls
+ipcMain.handle('minimize-window', () => windowManager.minimizeWindow());
+ipcMain.handle('maximize-window', () => windowManager.maximizeWindow());
+ipcMain.handle('close-window', () => windowManager.getWindow().close());
+
 // Development helpers
 if (isDev) {
   global.managers = {

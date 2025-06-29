@@ -17,6 +17,7 @@ class WindowManager {
       minWidth: 800,
       minHeight: 600,
       show: false,
+      frame: false,
       titleBarStyle: 'default'
     };
     this.devToolsDetached = true;
@@ -57,7 +58,7 @@ class WindowManager {
         allowRunningInsecureContent: false,
         experimentalFeatures: false
       },
-      icon: path.join(__dirname, 'assets', 'icon.png')
+      icon: path.join(__dirname, '..', 'public', 'cloudatlaslogo.ico')
     });
 
     // Setup window event handlers

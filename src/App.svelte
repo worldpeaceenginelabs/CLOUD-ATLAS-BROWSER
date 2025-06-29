@@ -1,5 +1,6 @@
 <script>
   import Browser from './components/Browser.svelte';
+  import { Minus, Square, X } from 'lucide-svelte';
   import './app.css';
 
   let logs = [];
@@ -19,6 +20,25 @@
     }
   }
 
+  // Window control functions
+  function minimizeWindow() {
+    if (window.electronAPI) {
+      window.electronAPI.minimizeWindow();
+    }
+  }
+
+  function maximizeWindow() {
+    if (window.electronAPI) {
+      window.electronAPI.maximizeWindow();
+    }
+  }
+
+  function closeWindow() {
+    if (window.electronAPI) {
+      window.electronAPI.closeWindow();
+    }
+  }
+
   // Initialize WebTorrent logging
   if (typeof window !== 'undefined') {
     window.addEventListener('load', () => {
@@ -28,6 +48,19 @@
 </script>
 
 <div class="app">
+  <!-- Custom Window Controls -->
+  <div class="window-controls">
+    <button class="window-control minimize" on:click={minimizeWindow} title="Minimize">
+      <Minus size={12} />
+    </button>
+    <button class="window-control maximize" on:click={maximizeWindow} title="Maximize">
+      <Square size={12} />
+    </button>
+    <button class="window-control close" on:click={closeWindow} title="Close">
+      <X size={12} />
+    </button>
+  </div>
+
   <Browser {addLog} />
 </div>
 
@@ -36,5 +69,49 @@
     height: 100vh;
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    position: relative;
+  }
+
+  .window-controls {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-bottom-left-radius: 8px;
+  }
+
+  .window-control {
+    width: 46px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    -webkit-app-region: no-drag;
+  }
+
+  .window-control:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
+  }
+
+  .window-control.close:hover {
+    background: #e81123;
+    color: white;
+  }
+
+  .window-control.minimize:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .window-control.maximize:hover {
+    background: rgba(0, 0, 0, 0.1);
   }
 </style>

@@ -38,6 +38,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   reloadBrowserView: (viewId) => ipcRenderer.invoke('reload-browser-view', viewId),
   getAllProcessesInfo: () => ipcRenderer.invoke('get-all-processes-info'),
 
+  // Window controls
+  minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
+  maximizeWindow: () => ipcRenderer.invoke('maximize-window'),
+  closeWindow: () => ipcRenderer.invoke('close-window'),
+
   // Event listeners
   onTorrentProgress: (callback) => {
     ipcRenderer.on('torrent-progress', (event, data) => callback(data));
