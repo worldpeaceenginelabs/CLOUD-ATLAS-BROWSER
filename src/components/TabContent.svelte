@@ -324,9 +324,10 @@
         <!-- Hero Section -->
         <div class="hero-section mb-12">
           <div class="hero-icon mb-6">
-            <div class="icon-container">
-              <span class="hero-emoji">🌐</span>
-            </div>
+            <!-- In your TabContent.svelte file -->
+        <div class="logo-container">
+          <img src="/cloudatlaslogo.png" alt="Cloud Atlas Logo" width="150" height="150" class="logo">
+        </div>
           </div>
           <h1 class="hero-title">CLOUD-ATLAS-BROWSER</h1>
           <p class="hero-subtitle">Your gateway to the decentralized web</p>
@@ -424,6 +425,7 @@
     justify-content: center;
     width: 100%;
     height: 100%;
+    overflow: auto;
   }
   
   .tab-content.hidden {
