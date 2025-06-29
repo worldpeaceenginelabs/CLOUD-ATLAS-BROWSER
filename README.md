@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/72fab104-5e32-4952-8638-320ac6c6ae85)
+![image](https://github.com/user-attachments/assets/84327d50-ef09-4388-bf28-91e447769813)
 
 # 🌐 Cloud Atlas Browser
 
