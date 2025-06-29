@@ -34,8 +34,8 @@
     "lucide-svelte": "^0.523.0"
   },
   "build": {
-    "appId": "com.webtorrentbrowser.app",
-    "productName": "WebTorrent Browser",
+    "appId": "cloudatlas.club",
+    "productName": "Cloud Atlas Browser",
     "directories": {
       "output": "release",
       "buildResources": "build"
