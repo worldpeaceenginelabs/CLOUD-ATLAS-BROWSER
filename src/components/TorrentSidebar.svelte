@@ -32,6 +32,18 @@
     sidebarWidth = state.sidebarWidth;
   });
 
+  // Reactive statement to ensure fullscreen state is always current
+  $: {
+    // This will run whenever the component updates, ensuring fullscreen state is current
+    if (typeof document !== 'undefined') {
+      const fullscreenElement = document.fullscreenElement || 
+                               document.webkitFullscreenElement || 
+                               document.mozFullScreenElement || 
+                               document.msFullscreenElement;
+      isFullscreen = !!fullscreenElement;
+    }
+  }
+
   onMount(async () => {
     try {
       const savedSidebarOpen = await persistenceStore.loadUIState('sidebarOpen', false);
@@ -44,6 +56,9 @@
       if (window.electronAPI) {
         window.electronAPI.updateSidebarState(savedSidebarOpen, savedSidebarWidth);
       }
+      
+      // Initialize fullscreen state
+      updateFullscreenState();
       
       // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
@@ -77,6 +92,7 @@
     }
 
     setupResizeHandlers();
+    setupFullscreenDetection();
   });
 
   onDestroy(() => {
@@ -85,6 +101,12 @@
       persistenceStore.saveUIState('sidebarOpen', sidebarOpen);
       persistenceStore.saveUIState('sidebarWidth', sidebarWidth);
     }
+    
+    // Cleanup fullscreen detection
+    document.removeEventListener('fullscreenchange', updateFullscreenState);
+    document.removeEventListener('webkitfullscreenchange', updateFullscreenState);
+    document.removeEventListener('mozfullscreenchange', updateFullscreenState);
+    document.removeEventListener('MSFullscreenChange', updateFullscreenState);
   });
 
   function setupResizeHandlers() {
@@ -355,18 +377,29 @@
   }
 
   function toggleFullscreen() {
-    const mediaElement = videoElement?.style.display !== 'none' ? videoElement : audioElement;
-    if (mediaElement) {
-      if (!isFullscreen) {
-        if (mediaElement.requestFullscreen) {
-          mediaElement.requestFullscreen();
-        }
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
+    const mediaElement = videoElement || audioElement;
+    if (!mediaElement) return;
+
+    if (!isFullscreen) {
+      if (mediaElement.requestFullscreen) {
+        mediaElement.requestFullscreen();
+      } else if (mediaElement.webkitRequestFullscreen) {
+        mediaElement.webkitRequestFullscreen();
+      } else if (mediaElement.mozRequestFullScreen) {
+        mediaElement.mozRequestFullScreen();
+      } else if (mediaElement.msRequestFullscreen) {
+        mediaElement.msRequestFullscreen();
       }
-      isFullscreen = !isFullscreen;
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
     }
   }
 
@@ -434,6 +467,32 @@
     acc.totalUploadSpeed += torrent.uploadSpeed || 0;
     return acc;
   }, { downloading: 0, paused: 0, completed: 0, totalDownloadSpeed: 0, totalUploadSpeed: 0 });
+
+  function updateFullscreenState() {
+    const fullscreenElement = document.fullscreenElement || 
+                             document.webkitFullscreenElement || 
+                             document.mozFullScreenElement || 
+                             document.msFullscreenElement;
+    
+    isFullscreen = !!fullscreenElement;
+    console.log('Fullscreen state updated:', isFullscreen);
+  }
+
+  function setupFullscreenDetection() {
+    // Listen for all fullscreen change events
+    document.addEventListener('fullscreenchange', updateFullscreenState);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenState);
+    document.addEventListener('mozfullscreenchange', updateFullscreenState);
+    document.addEventListener('MSFullscreenChange', updateFullscreenState);
+    
+    // Return cleanup function
+    return () => {
+      document.removeEventListener('fullscreenchange', updateFullscreenState);
+      document.removeEventListener('webkitfullscreenchange', updateFullscreenState);
+      document.removeEventListener('mozfullscreenchange', updateFullscreenState);
+      document.removeEventListener('MSFullscreenChange', updateFullscreenState);
+    };
+  }
 </script>
 
 {#if sidebarOpen}
