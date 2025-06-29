@@ -8,11 +8,20 @@ class BrowserManager {
     this.tabBarHeight = 36;
     this.addressBarHeight = 48;
     this.browserViewYOffset = this.tabBarHeight + this.addressBarHeight;
+    this.sidebarWidth = 0; // Track sidebar width
+    this.sidebarOpen = false; // Track sidebar state
   }
 
   // Set reference to main window
   setMainWindow(window) {
     this.mainWindow = window;
+  }
+
+  // Update sidebar state
+  updateSidebarState(open, width = 600) {
+    this.sidebarOpen = open;
+    this.sidebarWidth = open ? width : 0;
+    this.updateBrowserViewBounds();
   }
 
   // Send data to renderer process
@@ -28,17 +37,21 @@ class BrowserManager {
       const view = this.browserViews.get(this.currentViewId);
       const [width, height] = this.mainWindow.getContentSize();
       
+      // Calculate available width (subtract sidebar width if open)
+      const availableWidth = width - this.sidebarWidth;
+      
       console.log('Updating browser view bounds:', {
-        width,
+        width: availableWidth,
         height,
         yOffset: this.browserViewYOffset,
-        viewHeight: height - this.browserViewYOffset
+        viewHeight: height - this.browserViewYOffset,
+        sidebarWidth: this.sidebarWidth
       });
       
       view.setBounds({ 
         x: 0, 
         y: this.browserViewYOffset,
-        width: width, 
+        width: availableWidth, 
         height: height - this.browserViewYOffset
       });
     }
@@ -75,10 +88,11 @@ class BrowserManager {
 
       // Set view bounds using proper content size
       const [width, height] = this.mainWindow.getContentSize();
+      const availableWidth = width - this.sidebarWidth;
       view.setBounds({ 
         x: 0, 
         y: this.browserViewYOffset,
-        width: width, 
+        width: availableWidth, 
         height: height - this.browserViewYOffset
       });
 
@@ -266,10 +280,11 @@ class BrowserManager {
         
         // Update bounds using proper content size
         const [width, height] = this.mainWindow.getContentSize();
+        const availableWidth = width - this.sidebarWidth;
         view.setBounds({ 
           x: 0, 
           y: this.browserViewYOffset,
-          width: width, 
+          width: availableWidth, 
           height: height - this.browserViewYOffset
         });
         

@@ -170,24 +170,52 @@ function createTorrentStore() {
 
     // Sidebar controls
     toggleSidebar: () => {
-      update(state => ({
-        ...state,
-        sidebarOpen: !state.sidebarOpen
-      }));
+      update(state => {
+        const newState = {
+          ...state,
+          sidebarOpen: !state.sidebarOpen
+        };
+        
+        // Notify main process about sidebar state change
+        if (window.electronAPI) {
+          window.electronAPI.updateSidebarState(newState.sidebarOpen, newState.sidebarWidth);
+        }
+        
+        return newState;
+      });
     },
 
     setSidebarOpen: (open) => {
-      update(state => ({
-        ...state,
-        sidebarOpen: open
-      }));
+      update(state => {
+        const newState = {
+          ...state,
+          sidebarOpen: open
+        };
+        
+        // Notify main process about sidebar state change
+        if (window.electronAPI) {
+          window.electronAPI.updateSidebarState(newState.sidebarOpen, newState.sidebarWidth);
+        }
+        
+        return newState;
+      });
     },
 
     setSidebarWidth: (width) => {
-      update(state => ({
-        ...state,
-        sidebarWidth: Math.max(250, Math.min(600, width))
-      }));
+      update(state => {
+        const newWidth = Math.max(250, Math.min(600, width));
+        const newState = {
+          ...state,
+          sidebarWidth: newWidth
+        };
+        
+        // Notify main process about sidebar state change
+        if (window.electronAPI) {
+          window.electronAPI.updateSidebarState(newState.sidebarOpen, newState.sidebarWidth);
+        }
+        
+        return newState;
+      });
     },
 
     // Get all downloading torrents

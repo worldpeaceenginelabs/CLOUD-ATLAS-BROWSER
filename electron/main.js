@@ -155,6 +155,10 @@ ipcMain.handle('close-browser-view', (event, viewId) => {
 });
 ipcMain.handle('navigate-browser-view', (event, viewId, url) => browserManager.navigateBrowserView(viewId, url));
 ipcMain.handle('reload-browser-view', (event, viewId) => browserManager.reloadBrowserView(viewId));
+ipcMain.handle('update-sidebar-state', (event, open, width) => {
+  browserManager.updateSidebarState(open, width);
+  return true;
+});
 ipcMain.handle('create-new-tab-with-url', async (event, url) => {
   // Send event to renderer to create a new tab with this URL
   // The renderer will handle tab creation and browser view management

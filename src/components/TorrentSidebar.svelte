@@ -40,6 +40,11 @@
       torrentStore.setSidebarOpen(savedSidebarOpen);
       torrentStore.setSidebarWidth(savedSidebarWidth);
       
+      // Notify main process about initial sidebar state
+      if (window.electronAPI) {
+        window.electronAPI.updateSidebarState(savedSidebarOpen, savedSidebarWidth);
+      }
+      
       // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
       for (const torrent of savedTorrents) {
