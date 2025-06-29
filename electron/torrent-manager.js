@@ -16,6 +16,8 @@ class TorrentManager {
     this.torrentInfoMap = new Map(); // Store torrent info by infoHash for reliable lookup
     this.httpServer = null;
     this.httpPort = 18080; // You can randomize or increment if needed
+    this.networkErrorCount = 0; // Track network errors for recovery
+    this.lastNetworkError = 0; // Timestamp of last network error
   }
 
   // Initialize WebTorrent client and HTTP server
@@ -35,14 +37,56 @@ class TorrentManager {
       }
     });
 
+    // Enhanced error handling for WebRTC/ICE connection issues
     this.client.on('error', (err) => {
       console.error('WebTorrent error:', err);
+      
+      // Handle specific WebRTC/ICE connection errors
+      if (err.code === 'ERR_ICE_CONNECTION_CLOSED' || 
+          err.message.includes('ICE connection') ||
+          err.message.includes('WebRTC') ||
+          err.message.includes('peer connection')) {
+        console.warn('WebRTC/ICE connection error detected - this is likely due to network changes (VPN, etc.)');
+        this.handleNetworkChange();
+        this.sendToRenderer('torrent-warning', 'Network connection changed. Torrent connections may be temporarily affected.');
+        return; // Don't treat this as a fatal error
+      }
+      
+      // Handle other non-fatal errors
+      if (err.code === 'ENOTFOUND' || 
+          err.code === 'ECONNREFUSED' ||
+          err.code === 'ETIMEDOUT' ||
+          err.message.includes('tracker') ||
+          err.message.includes('announce')) {
+        console.warn('Network/tracker error (non-fatal):', err.message);
+        this.handleNetworkChange();
+        this.sendToRenderer('torrent-warning', `Network issue: ${err.message}`);
+        return; // Don't treat tracker/network errors as fatal
+      }
+      
+      // Send error to renderer for other cases
       this.sendToRenderer('torrent-error', err.message);
     });
 
     this.client.on('warning', (err) => {
       console.warn('WebTorrent warning:', err);
+      
+      // Filter out common warnings that shouldn't be shown to user
+      if (err.message.includes('ICE connection') ||
+          err.message.includes('WebRTC') ||
+          err.message.includes('peer connection') ||
+          err.message.includes('tracker') ||
+          err.message.includes('announce')) {
+        console.log('Suppressed warning (network-related):', err.message);
+        return;
+      }
+      
       this.sendToRenderer('torrent-warning', err.message);
+    });
+
+    // Add connection state monitoring
+    this.client.on('listening', () => {
+      console.log('WebTorrent client listening on port:', this.client.torrentPort);
     });
 
     console.log('WebTorrent client initialized in main process');
@@ -324,6 +368,30 @@ class TorrentManager {
 
         torrent.on('error', (err) => {
           console.error('Torrent error:', err);
+          
+          // Handle WebRTC/ICE connection errors gracefully
+          if (err.code === 'ERR_ICE_CONNECTION_CLOSED' || 
+              err.message.includes('ICE connection') ||
+              err.message.includes('WebRTC') ||
+              err.message.includes('peer connection')) {
+            console.warn(`WebRTC error for torrent ${torrent.name} - network change detected`);
+            // Don't reject the promise, just log the warning
+            this.sendToRenderer('torrent-warning', `Network change detected for ${torrent.name}. Connections may be temporarily affected.`);
+            return;
+          }
+          
+          // Handle other non-fatal torrent errors
+          if (err.code === 'ENOTFOUND' || 
+              err.code === 'ECONNREFUSED' ||
+              err.code === 'ETIMEDOUT' ||
+              err.message.includes('tracker') ||
+              err.message.includes('announce')) {
+            console.warn(`Non-fatal error for torrent ${torrent.name}:`, err.message);
+            this.sendToRenderer('torrent-warning', `Network issue with ${torrent.name}: ${err.message}`);
+            return;
+          }
+          
+          // Only reject for truly fatal errors
           reject(err);
         });
 
@@ -780,6 +848,57 @@ class TorrentManager {
     this.activeTorrents.clear(); // Clear streamable torrents registry
     this.torrentInfoMap.clear(); // Clear torrent info map
     console.log('Torrent tracking cleared');
+  }
+
+  // Handle network changes (VPN, connection loss, etc.)
+  handleNetworkChange() {
+    const now = Date.now();
+    this.networkErrorCount++;
+    this.lastNetworkError = now;
+    
+    console.log(`Network change detected (error #${this.networkErrorCount})`);
+    
+    // If we have multiple network errors in a short time, attempt recovery
+    if (this.networkErrorCount >= 3) {
+      console.log('Multiple network errors detected - attempting recovery...');
+      this.attemptNetworkRecovery();
+      this.networkErrorCount = 0; // Reset counter
+    }
+    
+    // Reset error count after 30 seconds of no errors
+    setTimeout(() => {
+      if (now === this.lastNetworkError) {
+        this.networkErrorCount = 0;
+        console.log('Network error count reset - connection appears stable');
+      }
+    }, 30000);
+  }
+  
+  // Attempt to recover from network issues
+  attemptNetworkRecovery() {
+    try {
+      console.log('Attempting network recovery...');
+      
+      // Re-announce to trackers to refresh connections
+      if (this.client && this.client.torrents.length > 0) {
+        this.client.torrents.forEach(torrent => {
+          try {
+            if (torrent.announce) {
+              torrent.announce();
+              console.log(`Re-announced torrent: ${torrent.name}`);
+            }
+          } catch (err) {
+            console.warn(`Failed to re-announce torrent ${torrent.name}:`, err.message);
+          }
+        });
+      }
+      
+      this.sendToRenderer('torrent-warning', 'Network recovery attempted. Torrent connections should resume shortly.');
+      
+    } catch (error) {
+      console.error('Network recovery failed:', error);
+      this.sendToRenderer('torrent-warning', 'Network recovery failed. You may need to restart the application.');
+    }
   }
 }
 

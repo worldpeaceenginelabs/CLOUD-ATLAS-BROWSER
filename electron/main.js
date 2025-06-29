@@ -195,10 +195,54 @@ if (isDev) {
 // Error handling
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection:', reason);
+  
+  // Handle WebRTC/ICE connection errors gracefully
+  if (reason && (reason.code === 'ERR_ICE_CONNECTION_CLOSED' || 
+                 reason.message?.includes('ICE connection') ||
+                 reason.message?.includes('WebRTC') ||
+                 reason.message?.includes('peer connection'))) {
+    console.warn('WebRTC/ICE connection error caught - this is likely due to network changes (VPN, etc.)');
+    return; // Don't treat as fatal
+  }
+  
+  // Handle other network-related errors
+  if (reason && (reason.code === 'ENOTFOUND' || 
+                 reason.code === 'ECONNREFUSED' ||
+                 reason.code === 'ETIMEDOUT' ||
+                 reason.message?.includes('tracker') ||
+                 reason.message?.includes('announce'))) {
+    console.warn('Network error caught (non-fatal):', reason.message);
+    return; // Don't treat as fatal
+  }
+  
+  // Log other unhandled rejections but don't crash
+  console.error('Unhandled rejection details:', { reason, promise });
 });
 
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
+  
+  // Handle WebRTC/ICE connection errors gracefully
+  if (error.code === 'ERR_ICE_CONNECTION_CLOSED' || 
+      error.message?.includes('ICE connection') ||
+      error.message?.includes('WebRTC') ||
+      error.message?.includes('peer connection')) {
+    console.warn('WebRTC/ICE connection error caught - this is likely due to network changes (VPN, etc.)');
+    return; // Don't crash the app
+  }
+  
+  // Handle other network-related errors
+  if (error.code === 'ENOTFOUND' || 
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ETIMEDOUT' ||
+      error.message?.includes('tracker') ||
+      error.message?.includes('announce')) {
+    console.warn('Network error caught (non-fatal):', error.message);
+    return; // Don't crash the app
+  }
+  
+  // For truly fatal errors, log and exit
+  console.error('Fatal error - exiting:', error);
   process.exit(1);
 });
 
