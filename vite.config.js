@@ -8,6 +8,9 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   plugins: [svelte()],
   
+  // Use relative paths for assets
+  base: './',
+  
   build: {
     rollupOptions: {
       input: {
@@ -25,10 +28,5 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true
-  },
-
-  // CSS processing
-  css: {
-    postcss: './postcss.config.js'
   }
 });

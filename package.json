@@ -7,6 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "build:win-portable": "vite build && electron-builder --win portable",
+    "build:win-installer": "vite build && electron-builder --win nsis",
+    "build:win-quick": "vite build && electron-builder --win --skip-deps-check",
+    "build:win-no-rebuild": "set npm_config_build_from_source=false && vite build && electron-builder --win portable",
     "preview": "vite preview",
     "electron": "wait-on tcp:5173 && cross-env IS_DEV=true electron .",
     "electron:dev": "concurrently \"npm run dev\" \"npm run electron\"",
@@ -37,14 +42,50 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
-      "node_modules/**/*"
+      "electron/**/*",
+      "node_modules/**/*",
+      "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      },
+      {
+        "from": "node_modules/webtorrent",
+        "to": "node_modules/webtorrent",
+        "filter": ["**/*", "!**/node_modules/bufferutil/**", "!**/node_modules/utf-8-validate/**"]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "sign": false,
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
     "protocols": [
       {
         "name": "Magnet Link",
         "schemes": ["magnet"]
       }
-    ]
+    ],
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "asar": false
   }
 }

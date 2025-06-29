@@ -242,9 +242,13 @@ class WindowManager {
       console.log(`Loading development server: http://localhost:${this.port}`);
       this.mainWindow.loadURL(`http://localhost:${this.port}`);
     } else {
-      const indexPath = path.join(__dirname, 'dist', 'index.html');
-      console.log(`Loading production build: ${indexPath}`);
-      this.mainWindow.loadFile(indexPath);
+      // Load the actual app from the resources path
+      const indexPath = path.join(process.resourcesPath, 'dist', 'index.html');
+      console.log(`Loading production app from: ${indexPath}`);
+      
+      this.mainWindow.loadFile(indexPath).catch((error) => {
+        console.error('Failed to load app:', error);
+      });
     }
   }
 
