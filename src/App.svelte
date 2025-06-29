@@ -48,6 +48,9 @@
 </script>
 
 <div class="app">
+  <!-- Draggable Region -->
+  <div class="draggable-region"></div>
+  
   <!-- Custom Window Controls -->
   <div class="window-controls">
     <button class="window-control minimize" on:click={minimizeWindow} title="Minimize">
@@ -70,6 +73,17 @@
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     position: relative;
+  }
+
+  .draggable-region {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    z-index: 999;
+    -webkit-app-region: drag;
+    background: transparent;
   }
 
   .window-controls {
