@@ -220,6 +220,7 @@
     display: flex;
     align-items: center;
     width: 100%; /* Ensure full width */
+    backdrop-filter: blur(10px);
   }
 
   .address-bar-content {
@@ -254,6 +255,7 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     flex: 1; /* Take all remaining horizontal space */
     min-width: 0; /* Allow shrinking */
+    backdrop-filter: blur(10px);
   }
 
   .address-input-container:focus-within {
@@ -308,10 +310,12 @@
     justify-content: center;
     transition: background-color 0.1s ease;
     flex-shrink: 0;
+    color: var(--chrome-text);
   }
 
   .nav-btn:hover:not(:disabled) {
-    background: rgba(60, 64, 67, 0.08);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
   }
 
   .nav-btn:disabled {
@@ -329,9 +333,10 @@
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.1s ease;
+    backdrop-filter: blur(10px);
   }
 
   .send-btn:hover {
-    background: #1557b0;
+    background: #8bc4ff;
   }
 </style>

@@ -488,7 +488,7 @@
     justify-content: center;
     width: 100%;
     height: 100%;
-    flex-direction: column;
+    
   }
 
   /* Modern Minimalistic Design Styles */
@@ -789,10 +789,7 @@
   /* Ensure all text is properly centered */
   .text-center {
     text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
+   
   }
 
   /* Clean typography */

@@ -2,17 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Chrome-like styling variables */
+/* Corporate glassmorphism styling variables */
 :root {
-  --chrome-bg: #f1f3f4;
-  --chrome-border: #dadce0;
-  --chrome-tab: #ffffff;
-  --chrome-tab-inactive: #e8eaed;
-  --chrome-tab-hover: #f8f9fa;
-  --chrome-address-bar: #ffffff;
-  --chrome-blue: #1a73e8;
-  --chrome-text: #3c4043;
-  --chrome-text-secondary: #5f6368;
+  --chrome-bg: #1a1a1a;
+  --chrome-border: rgba(255, 255, 255, 0.2);
+  --chrome-tab: rgba(255, 255, 255, 0.1);
+  --chrome-tab-inactive: rgba(255, 255, 255, 0.05);
+  --chrome-tab-hover: rgba(255, 255, 255, 0.15);
+  --chrome-address-bar: rgba(255, 255, 255, 0.1);
+  --chrome-blue: #abd6ff;
+  --chrome-text: white;
+  --chrome-text-secondary: rgba(255, 255, 255, 0.7);
   --tab-bar-height: 36px;
   --address-bar-height: 48px;
 }
@@ -26,7 +26,10 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-color: var(--chrome-bg);
   color: var(--chrome-text);
   font-size: 13px;
@@ -51,6 +54,7 @@ html, body {
   align-items: flex-end;
   padding: 0 8px;
   flex-shrink: 0; /* Don't shrink */
+  backdrop-filter: blur(10px);
 }
 
 .tabs-container {
@@ -81,6 +85,7 @@ html, body {
   cursor: pointer;
   position: relative;
   transition: background-color 0.1s ease;
+  backdrop-filter: blur(10px);
 }
 
 .tab:hover {
@@ -112,6 +117,7 @@ html, body {
   max-height: var(--address-bar-height);
   padding: 8px;
   flex-shrink: 0; /* Don't shrink */
+  backdrop-filter: blur(10px);
 }
 
 .address-input-container {
@@ -123,6 +129,7 @@ html, body {
   align-items: center;
   padding: 0 12px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  backdrop-filter: blur(10px);
 }
 
 .address-input-container:focus-within {
@@ -155,10 +162,12 @@ html, body {
   align-items: center;
   justify-content: center;
   transition: background-color 0.1s ease;
+  color: var(--chrome-text);
 }
 
 .nav-btn:hover:not(:disabled) {
-  background: rgba(60, 64, 67, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .nav-btn:disabled {
@@ -177,10 +186,11 @@ html, body {
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.1s ease;
+  backdrop-filter: blur(10px);
 }
 
 .send-btn:hover {
-  background: #1557b0;
+  background: #8bc4ff;
 }
 
 /* Browser window layout */
@@ -197,19 +207,19 @@ html, body {
   flex: 1;
   position: relative;
   overflow: hidden;
-  background: white;
-  /* Explicit height calculation to ensure proper sizing */
-  height: calc(100vh - var(--tab-bar-height) - var(--address-bar-height));
-  min-height: 0; /* Allow flexbox to shrink this */
+  background: #2a2a2a;
 }
 
-/* Tab content area */
+/* Tab content styling */
 .tab-content {
-  background: white;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  transition: opacity 0.2s ease-in-out;
 }
 
 .tab-content.hidden {
@@ -220,7 +230,7 @@ html, body {
   display: block;
 }
 
-/* Web content iframe */
+/* Web content frame */
 .web-content-frame {
   width: 100%;
   height: 100%;
@@ -228,13 +238,15 @@ html, body {
   background: white;
 }
 
-/* Ensure web content placeholder takes full space */
+/* Web content placeholder */
 .web-content-placeholder {
-  width: 100%;
-  height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  height: 100%;
+  color: var(--chrome-text);
+  background: #2a2a2a;
 }
 
 .web-content-active {
@@ -242,86 +254,122 @@ html, body {
   height: 100%;
 }
 
-/* Torrent content styling */
+/* Torrent container */
 .torrent-container {
-  background: white;
-  height: 100%;
-  overflow-y: auto;
-}
-
-/* Default content styling */
-.default-content {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.seeding-container {
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-}
-
-/* Chrome-style buttons */
-.chrome-button {
-  background: #f8f9fa;
-  border: 1px solid #dadce0;
-  border-radius: 4px;
+  padding: 20px;
   color: var(--chrome-text);
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
+  background: #2a2a2a;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Default content */
+.default-content {
+  text-align: center;
+  padding: 40px;
+  color: var(--chrome-text);
+}
+
+/* Seeding container */
+.seeding-container {
+  padding: 20px;
+  color: var(--chrome-text);
+  background: #2a2a2a;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Chrome button styling */
+.chrome-button {
+  padding: 10px 20px;
+  font-size: 16px;
   cursor: pointer;
-  transition: all 0.1s ease;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease;
 }
 
 .chrome-button:hover {
-  background: #f1f3f4;
-  border-color: #dadce0;
+  background: var(--chrome-blue);
 }
 
 .chrome-button:active {
-  background: #e8eaed;
+  transform: translateY(1px);
 }
 
 .chrome-button.primary {
   background: var(--chrome-blue);
-  border-color: var(--chrome-blue);
   color: white;
 }
 
 .chrome-button.primary:hover {
-  background: #1557b0;
-  border-color: #1557b0;
+  background: #8bc4ff;
 }
 
-/* Custom scrollbar */
+/* WebKit Scrollbar Styles */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox Scrollbar Styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 /* Focus styles */
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--chrome-blue);
   outline-offset: 2px;
 }
 
-/* Loading spinner */
+/* Loading animation */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -335,108 +383,162 @@ input:focus-visible {
   animation: spin 1s linear infinite;
 }
 
-/* File list styling for torrent content */
+/* File item styling */
 .file-item {
-  background: #f8f9fa;
-  border: 1px solid #e8eaed;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 8px;
-  transition: all 0.1s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
 }
 
 .file-item:hover {
-  background: #f1f3f4;
-  border-color: #dadce0;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Progress bars */
+/* Progress bar */
 .progress-bar {
-  background: #e8eaed;
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  height: 4px;
   overflow: hidden;
+  margin: 8px 0;
 }
 
 .progress-fill {
-  background: var(--chrome-blue);
   height: 100%;
-  border-radius: 4px;
+  background: var(--chrome-blue);
   transition: width 0.3s ease;
+  border-radius: 4px;
 }
 
-/* Status indicators */
+/* Status bar */
 .status-bar {
-  background: #f8f9fa;
-  border: 1px solid #e8eaed;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: var(--chrome-text);
 }
 
 /* Action buttons */
 .action-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--chrome-text);
   border: none;
   border-radius: 4px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.1s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  opacity: 0.4;
+  cursor: default;
 }
 
 .action-btn:disabled:hover {
-  background-color: inherit !important;
+  background: rgba(255, 255, 255, 0.1);
 }
 
-/* Close button on tabs */
+/* Close button */
 .close-btn {
-  background: transparent;
-  border: none;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  width: 20px;
-  height: 20px;
+  border: none;
+  background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  color: var(--chrome-text-secondary);
   transition: all 0.1s ease;
+  margin-left: 8px;
 }
 
 .tab:hover .close-btn {
-  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .close-btn:hover {
-  background: rgba(60, 64, 67, 0.1);
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: var(--chrome-text);
 }
 
 /* New tab button */
 .new-tab-btn {
-  background: transparent;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
   border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--chrome-text-secondary);
+  transition: all 0.1s ease;
   margin-left: 4px;
-  transition: background-color 0.1s ease;
 }
 
 .new-tab-btn:hover {
-  background: rgba(60, 64, 67, 0.08);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--chrome-text);
+}
+
+/* Form styling */
+form {
+  border: 0px solid #ccc;
+  padding-bottom: 1rem;
+  margin: 0;
+}
+
+label {
+  font-weight: bold;
+  color: var(--chrome-text);
+}
+
+input, textarea {
+  width: 100%;
+  padding: 0rem;
+  margin-bottom: 0rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+  color: var(--chrome-text);
+  backdrop-filter: blur(10px);
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--chrome-text-secondary);
+}
+
+/* Container styling */
+.container {
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .content-area {
+    margin-right: 0 !important;
+  }
 }

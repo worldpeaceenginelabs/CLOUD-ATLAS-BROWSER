@@ -150,6 +150,7 @@
     align-items: flex-end;
     padding: 0 8px;
     flex-shrink: 0;
+    backdrop-filter: blur(10px);
   }
 
   .tabs-container {
@@ -179,6 +180,7 @@
     cursor: pointer;
     position: relative;
     transition: background-color 0.1s ease;
+    backdrop-filter: blur(10px);
   }
 
   .tab:hover {
@@ -204,7 +206,7 @@
   :global(.tab-icon) {
     margin-right: 6px;
     flex-shrink: 0;
-    color: #5f6368;
+    color: var(--chrome-text-secondary);
   }
 
   .tab-favicon {
@@ -220,7 +222,7 @@
     flex: 1;
     font-size: 12px;
     font-weight: 400;
-    color: #3c4043;
+    color: var(--chrome-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -229,15 +231,15 @@
   }
 
   .tab.active .tab-title {
-    color: #202124;
+    color: var(--chrome-text);
     font-weight: 500;
   }
 
   .loading-indicator {
     width: 12px;
     height: 12px;
-    border: 2px solid #e8eaed;
-    border-top: 2px solid #1a73e8;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-top: 2px solid var(--chrome-blue);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-right: 6px;
@@ -257,6 +259,7 @@
     opacity: 0;
     transition: all 0.1s ease;
     flex-shrink: 0;
+    color: var(--chrome-text-secondary);
   }
 
   .tab:hover .close-btn {
@@ -264,7 +267,8 @@
   }
 
   .close-btn:hover {
-    background: rgba(60, 64, 67, 0.1);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--chrome-text);
   }
 
   .new-tab-btn {
@@ -280,10 +284,12 @@
     margin-left: 4px;
     transition: background-color 0.1s ease;
     flex-shrink: 0;
+    color: var(--chrome-text-secondary);
   }
 
   .new-tab-btn:hover {
-    background: rgba(60, 64, 67, 0.08);
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--chrome-text);
   }
 
   @keyframes spin {
