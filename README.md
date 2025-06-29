@@ -1,3 +1,5 @@
+![image](https://github.com/user-attachments/assets/72fab104-5e32-4952-8638-320ac6c6ae85)
+
 # 🌐 Cloud Atlas Browser
 
 > **The browser *is* the network.**  
