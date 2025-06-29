@@ -55,7 +55,7 @@ It empowers users to:
 | 💻 WebContainer Support     | Apps with `package.json` auto-open in dev mode                             |
 | 🧰 Dev Sidebar              | Live console, editing tools, and future plugin API                         |
 | 🔁 Remix + Re-publish       | Fork apps and re-seed them instantly with `.atlasmeta.json`                |
-| 🧾 Dev Registry             | One-time $10 to whitelist and publish apps to the ecosystem                |
+| 🧾 Dev Registry             | Whitelist and publish apps to the ecosystem                                |
 | 📚 Whitelist Browser        | Curated magnet apps searchable from within the browser                     |
 | 🔗 Cloud Atlas OS Bridge    | Acts as a node and launcher for the full Cloud Atlas OS                    |
 
