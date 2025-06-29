@@ -135,6 +135,9 @@
         }
       });
 
+      // Set up fullscreen detection
+      setupFullscreenDetection();
+
       // Handle new tab requests from target="_blank" links
       window.electronAPI.onCreateNewTabWithUrl(async (url) => {
         console.log('Creating new tab for URL:', url);
@@ -266,6 +269,12 @@
         }
       });
     }
+
+    // Cleanup fullscreen detection
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
   });
 
   function handleNewTab() {
@@ -504,6 +513,46 @@
       } catch (error) {
         addLog(`Error terminating tab process: ${error.message}`, 'error');
       }
+    }
+  }
+
+  // Set up fullscreen detection
+  function setupFullscreenDetection() {
+    // Listen for fullscreen changes
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    
+    // Also listen for fullscreen element changes (for video elements)
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'fullscreen') {
+          handleFullscreenChange();
+        }
+      });
+    });
+    
+    // Observe the document for fullscreen attribute changes
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['fullscreen']
+    });
+  }
+
+  function handleFullscreenChange() {
+    const isFullscreen = !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+    
+    console.log('Fullscreen state changed in renderer:', isFullscreen);
+    
+    // Notify main process about fullscreen state change
+    if (window.electronAPI) {
+      window.electronAPI.handleFullscreenChange(isFullscreen);
     }
   }
 </script>

@@ -159,6 +159,10 @@ ipcMain.handle('update-sidebar-state', (event, open, width) => {
   browserManager.updateSidebarState(open, width);
   return true;
 });
+ipcMain.handle('handle-fullscreen-change', (event, isFullscreen) => {
+  browserManager.handleFullscreenChange(isFullscreen);
+  return true;
+});
 ipcMain.handle('create-new-tab-with-url', async (event, url) => {
   // Send event to renderer to create a new tab with this URL
   // The renderer will handle tab creation and browser view management

@@ -10,6 +10,8 @@ class BrowserManager {
     this.browserViewYOffset = this.tabBarHeight + this.addressBarHeight;
     this.sidebarWidth = 0; // Track sidebar width
     this.sidebarOpen = false; // Track sidebar state
+    this.isFullscreen = false; // Track fullscreen state
+    this.hiddenForFullscreen = false; // Track if BrowserView was hidden for fullscreen
   }
 
   // Set reference to main window
@@ -259,6 +261,28 @@ class BrowserManager {
         message: 'Tab process terminated unexpectedly'
       });
     });
+
+    // Fullscreen detection
+    view.webContents.on('enter-html-full-screen', () => {
+      console.log(`Tab ${viewId} entered HTML fullscreen`);
+      this.handleFullscreenChange(true);
+    });
+
+    view.webContents.on('leave-html-full-screen', () => {
+      console.log(`Tab ${viewId} left HTML fullscreen`);
+      this.handleFullscreenChange(false);
+    });
+
+    // Also detect window fullscreen changes
+    view.webContents.on('enter-full-screen', () => {
+      console.log(`Tab ${viewId} entered fullscreen`);
+      this.handleFullscreenChange(true);
+    });
+
+    view.webContents.on('leave-full-screen', () => {
+      console.log(`Tab ${viewId} left fullscreen`);
+      this.handleFullscreenChange(false);
+    });
   }
 
   // Set active browser view
@@ -485,6 +509,51 @@ class BrowserManager {
     this.browserViews.clear();
     this.currentViewId = null;
     console.log('Browser manager destroyed');
+  }
+
+  // Handle fullscreen state changes
+  handleFullscreenChange(isFullscreen) {
+    console.log('Fullscreen state changed:', isFullscreen);
+    this.isFullscreen = isFullscreen;
+    
+    if (isFullscreen) {
+      // Hide BrowserView when entering fullscreen
+      this.hideBrowserViewForFullscreen();
+    } else {
+      // Show BrowserView when exiting fullscreen
+      this.showBrowserViewAfterFullscreen();
+    }
+  }
+
+  // Hide BrowserView for fullscreen video
+  hideBrowserViewForFullscreen() {
+    if (this.currentViewId && this.browserViews.has(this.currentViewId) && !this.hiddenForFullscreen) {
+      const view = this.browserViews.get(this.currentViewId);
+      this.mainWindow.removeBrowserView(view);
+      this.hiddenForFullscreen = true;
+      console.log('BrowserView hidden for fullscreen video');
+    }
+  }
+
+  // Show BrowserView after fullscreen video
+  showBrowserViewAfterFullscreen() {
+    if (this.currentViewId && this.browserViews.has(this.currentViewId) && this.hiddenForFullscreen) {
+      const view = this.browserViews.get(this.currentViewId);
+      this.mainWindow.addBrowserView(view);
+      
+      // Update bounds
+      const [width, height] = this.mainWindow.getContentSize();
+      const availableWidth = width - this.sidebarWidth;
+      view.setBounds({ 
+        x: 0, 
+        y: this.browserViewYOffset,
+        width: availableWidth, 
+        height: height - this.browserViewYOffset
+      });
+      
+      this.hiddenForFullscreen = false;
+      console.log('BrowserView restored after fullscreen video');
+    }
   }
 }
 

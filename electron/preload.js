@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   navigateBrowserView: (viewId, url) => ipcRenderer.invoke('navigate-browser-view', viewId, url),
   createNewTabWithUrl: (url) => ipcRenderer.invoke('create-new-tab-with-url', url),
   updateSidebarState: (open, width) => ipcRenderer.invoke('update-sidebar-state', open, width),
+  handleFullscreenChange: (isFullscreen) => ipcRenderer.invoke('handle-fullscreen-change', isFullscreen),
   
   // Navigation
   goBack: (viewId) => ipcRenderer.invoke('go-back', viewId),
