@@ -100,20 +100,21 @@ class ShortcutsManager {
       this.sendToRenderer('navigate-forward');
     });
 
-    // Development shortcuts
+    // Development shortcuts (enabled for both dev and production)
+    this.registerShortcut('F12', 'toggle-dev-tools', () => {
+      this.toggleDevTools();
+    });
+
+    this.registerShortcut('Ctrl+Shift+I', 'toggle-dev-tools', () => {
+      this.toggleDevTools();
+    });
+
+    this.registerShortcut('Cmd+Option+I', 'toggle-dev-tools', () => {
+      this.toggleDevTools();
+    });
+
+    // App reload shortcuts (development only)
     if (this.isDev) {
-      this.registerShortcut('F12', 'toggle-dev-tools', () => {
-        this.toggleDevTools();
-      });
-
-      this.registerShortcut('Ctrl+Shift+I', 'toggle-dev-tools', () => {
-        this.toggleDevTools();
-      });
-
-      this.registerShortcut('Cmd+Option+I', 'toggle-dev-tools', () => {
-        this.toggleDevTools();
-      });
-
       this.registerShortcut('Ctrl+Shift+R', 'reload-electron-app', () => {
         this.mainWindow.reload();
       });
@@ -299,7 +300,7 @@ class ShortcutsManager {
 
   // Toggle developer tools
   toggleDevTools() {
-    if (!this.isDev || !this.mainWindow) return;
+    if (!this.mainWindow) return;
 
     if (this.mainWindow.webContents.isDevToolsOpened()) {
       this.mainWindow.webContents.closeDevTools();

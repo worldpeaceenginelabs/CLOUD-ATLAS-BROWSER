@@ -326,7 +326,7 @@
           <div class="hero-icon mb-6">
             <!-- In your TabContent.svelte file -->
         <div class="logo-container">
-          <img src="/cloudatlaslogo.png" alt="Cloud Atlas Logo" width="150" height="150" class="logo">
+          <img src="./cloudatlaslogo.png" alt="Cloud Atlas Logo" width="150" height="150" class="logo">
         </div>
           </div>
           <h1 class="hero-title">CLOUD-ATLAS-BROWSER</h1>

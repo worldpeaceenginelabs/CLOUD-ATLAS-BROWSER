@@ -67,10 +67,8 @@ class WindowManager {
     // Setup security handlers
     this.setupSecurityHandlers();
 
-    // Setup developer tools if in development
-    if (this.isDev) {
-      this.setupDevelopmentFeatures();
-    }
+    // Setup developer tools (enabled for both dev and production)
+    this.setupDevelopmentFeatures();
 
     // Load the application
     this.loadApplication();
@@ -255,7 +253,7 @@ class WindowManager {
 
   // Toggle developer tools
   toggleDevTools() {
-    if (!this.isDev || !this.mainWindow) return;
+    if (!this.mainWindow) return;
 
     if (this.mainWindow.webContents.isDevToolsOpened()) {
       this.mainWindow.webContents.closeDevTools();
