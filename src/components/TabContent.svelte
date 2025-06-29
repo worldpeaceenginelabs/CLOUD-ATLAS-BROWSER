@@ -488,6 +488,7 @@
     justify-content: center;
     width: 100%;
     height: 100%;
+    flex-direction: column;
   }
 
   /* Modern Minimalistic Design Styles */
@@ -661,6 +662,10 @@
   /* Example Section */
   .example-section {
     animation: slideUp 0.6s ease-out 0.3s both;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
 
   .example-card {
@@ -675,6 +680,7 @@
   .example-header {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.75rem;
     margin-bottom: 0.75rem;
   }
@@ -783,6 +789,10 @@
   /* Ensure all text is properly centered */
   .text-center {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
   }
 
   /* Clean typography */
