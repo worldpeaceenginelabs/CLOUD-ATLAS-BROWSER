@@ -631,8 +631,8 @@
     width: 100%;
   }
 
-  /* Ensure tab content fills the content area properly */
-  .content-area :global(.tab-content) {
+  /* Remove all problematic CSS that overrides centering */
+  /* .content-area :global(.tab-content) {
     position: absolute;
     top: 0;
     left: 0;
@@ -641,15 +641,15 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-  }
+  } */
 
-  .content-area :global(.tab-content.hidden) {
+  /* .content-area :global(.tab-content.hidden) {
     display: none;
-  }
+  } */
 
-  .content-area :global(.tab-content.active) {
+  /* .content-area :global(.tab-content.active) {
     display: block;
-  }
+  } */
 
   /* Mobile responsiveness */
   @media (max-width: 768px) {
