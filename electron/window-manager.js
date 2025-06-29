@@ -58,7 +58,7 @@ class WindowManager {
         allowRunningInsecureContent: false,
         experimentalFeatures: false
       },
-      icon: path.join(__dirname, '..', 'public', 'cloudatlaslogo.ico')
+      icon: path.join(__dirname, 'assets', 'icon.png')
     });
 
     // Setup window event handlers

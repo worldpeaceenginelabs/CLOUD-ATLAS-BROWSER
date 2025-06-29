@@ -68,7 +68,7 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "public/cloudatlaslogo.ico",
+      "icon": "build/icon.ico",
       "sign": false,
       "signAndEditExecutable": false
     },
