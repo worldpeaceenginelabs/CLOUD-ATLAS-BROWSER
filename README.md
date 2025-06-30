@@ -1,4 +1,6 @@
 ![image](https://github.com/user-attachments/assets/10dd098c-957e-4d56-864a-d7ac396f48e1)
+# Attention
+The picture is version 1.0.1 integrating the seeding into the torrent list, readding after restart (coming soon)
 
 # 🌐 Cloud Atlas Browser
 
