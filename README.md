@@ -1,4 +1,4 @@
-![image](https://github.com/user-attachments/assets/84327d50-ef09-4388-bf28-91e447769813)
+![image](https://github.com/user-attachments/assets/10dd098c-957e-4d56-864a-d7ac396f48e1)
 
 # 🌐 Cloud Atlas Browser
 
@@ -23,19 +23,19 @@ Cloud Atlas Browser is more than a browser. It’s a decentralized runtime, app 
 
 It empowers users to:
 
-- 📦 Open full web apps directly from **magnet links**
-- 📤 **Send** files or folders to peers via WebTorrent
-- 📥 **Receive** content in real time, peer-to-peer
-- 🎬 Stream video/audio from torrents with **sticky media player**
-- 🖼️ Preview images instantly via system viewer
-- ❤️ **Like = Pin** = Seed and support your favorite apps with bandwidth
-- 🧪 Run or remix full web apps using **WebContainers**
-- 🧭 Browse with tabs, address bar, and a growing dev tools sidebar
-- 🛠 Fork and republish apps with **`.atlasmeta.json`** versioning (decentralized GitHub)
-- 🔐 Use Nostr for **portable identity**
-- 🧾 Register your dApp name for a one-time lifetime fee — human verification + lifetime hosting + infinite global scale (no servers, no middlemen, ever)
-- 📚 Discover approved dApps via the keypair signed **whitelist**
-- 🔗 Seamlessly connect to and power the **Cloud Atlas OS**
+- 📦 Open full web apps directly from **magnet links** (coming soon)
+- 📤 **Send** files or folders to peers via WebTorrent (working)
+- 📥 **Receive** content in real time, peer-to-peer (working)
+- 🎬 Stream video/audio from torrents with **sticky media player** (working)
+- 🖼️ Preview images instantly via system viewer (working)
+- ❤️ **Like = Pin** = Seed and support your favorite apps with bandwidth (coming soon)
+- 🧪 Run or remix full web apps using **WebContainers** (coming soon)
+- 🧭 Browse with tabs, address bar, and a growing dev tools sidebar (working)
+- 🛠 Fork and republish apps with **`.atlasmeta.json`** versioning (decentralized GitHub) (coming soon)
+- 🔐 Use Nostr for **portable identity** (coming soon)
+- 🧾 Register your dApp name for a one-time lifetime fee — human verification + lifetime hosting + infinite global scale (no servers, no middlemen, ever) (coming soon)
+- 📚 Discover approved dApps via the keypair signed **whitelist** (coming soon)
+- 🔗 Seamlessly connect to and power the **Cloud Atlas OS** (coming soon)
 
 <br><br>
 
