@@ -1,5 +1,5 @@
 <script>
-  import { X, Plus, Globe, Download, Lock } from 'lucide-svelte';
+  import { X, Plus, Globe, Download, Minus, Square } from 'lucide-svelte';
 
   export let tabs = [];
   export let activeTabId = null;
@@ -72,6 +72,25 @@
     // Remove favicon if it fails to load
     tab.favicon = null;
   }
+
+  // Window control functions
+  function minimizeWindow() {
+    if (window.electronAPI) {
+      window.electronAPI.minimizeWindow();
+    }
+  }
+
+  function maximizeWindow() {
+    if (window.electronAPI) {
+      window.electronAPI.maximizeWindow();
+    }
+  }
+
+  function closeWindow() {
+    if (window.electronAPI) {
+      window.electronAPI.closeWindow();
+    }
+  }
 </script>
 
 <div class="tab-bar">
@@ -137,6 +156,19 @@
   >
     <Plus size={16} />
   </button>
+
+  <!-- Window Controls -->
+  <div class="window-controls">
+    <button class="window-control minimize" on:click={minimizeWindow} title="Minimize">
+      <Minus size={12} />
+    </button>
+    <button class="window-control maximize" on:click={maximizeWindow} title="Maximize">
+      <Square size={12} />
+    </button>
+    <button class="window-control close" on:click={closeWindow} title="Close">
+      <X size={12} />
+    </button>
+  </div>
 </div>
 
 <style>
@@ -151,6 +183,7 @@
     padding: 0 8px;
     flex-shrink: 0;
     backdrop-filter: blur(10px);
+    -webkit-app-region: drag;
   }
 
   .tabs-container {
@@ -159,6 +192,7 @@
     overflow-x: auto;
     scrollbar-width: none; /* Firefox */
     margin-right: 4px;
+    -webkit-app-region: no-drag;
   }
   
   .tabs-container::-webkit-scrollbar {
@@ -285,6 +319,7 @@
     transition: background-color 0.1s ease;
     flex-shrink: 0;
     color: var(--chrome-text-secondary);
+    -webkit-app-region: no-drag;
   }
 
   .new-tab-btn:hover {
@@ -299,5 +334,48 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  .window-controls {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1000;
+    display: flex;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-bottom-left-radius: 8px;
+  }
+
+  .window-control {
+    width: 46px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    -webkit-app-region: no-drag;
+  }
+
+  .window-control:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
+  }
+
+  .window-control.close:hover {
+    background: #e81123;
+    color: white;
+  }
+
+  .window-control.minimize:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .window-control.maximize:hover {
+    background: rgba(0, 0, 0, 0.1);
   }
 </style>
