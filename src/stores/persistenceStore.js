@@ -102,6 +102,7 @@ class PersistenceStore {
         files: torrent.files,
         dateAdded: torrent.dateAdded,
         actualDownloadPath: torrent.actualDownloadPath || null, // Store the REAL path from download event
+        torrentType: torrent.torrentType || 'downloading', // Persist torrentType
         // Don't save progress/speed data - these are ephemeral
       };
       
@@ -128,6 +129,7 @@ class PersistenceStore {
       request.onsuccess = () => {
         const torrents = request.result.map(torrent => ({
           ...torrent,
+          torrentType: torrent.torrentType || 'downloading', // Default to downloading if missing
           // Reset ephemeral data on load
           progress: 0,
           downloadSpeed: 0,

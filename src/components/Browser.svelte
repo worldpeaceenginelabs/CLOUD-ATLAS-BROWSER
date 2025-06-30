@@ -413,7 +413,7 @@
       
       if (torrentInfo) {
         // Add to torrent store (with built-in deduplication)
-        const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo);
+        const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo, 'downloading');
         
         if (torrentId) {
           addLog(`Torrent added: ${torrentInfo.name}`, 'success');
@@ -428,7 +428,8 @@
             status: 'downloading',
             files: torrentInfo.files,
             dateAdded: new Date(),
-            actualDownloadPath: null // Will be set when download event fires
+            actualDownloadPath: null, // Will be set when download event fires
+            torrentType: 'downloading'
           }, true); // ← TRUE = this is a new torrent, check for duplicates
           
           if (!saved) {
@@ -459,6 +460,26 @@
         // Seed file via main process
         const seedResult = await window.electronAPI.seedFile(filePath);
         
+        // Add to torrent store as a sharing torrent
+        if (seedResult && seedResult.magnetUri) {
+          const torrentId = torrentStore.addTorrent(seedResult.magnetUri, seedResult, 'sharing');
+          if (torrentId) {
+            // Save to persistence
+            const { persistenceStore } = await import('../stores/persistenceStore.js');
+            await persistenceStore.saveTorrent({
+              id: torrentId,
+              magnetUri: seedResult.magnetUri,
+              infoHash: torrentStore.extractInfoHash(seedResult.magnetUri),
+              name: seedResult.name,
+              status: 'downloading', // seeding is still 'downloading' in logic
+              files: seedResult.files,
+              dateAdded: new Date(),
+              actualDownloadPath: null,
+              torrentType: 'sharing'
+            }, true);
+          }
+        }
+
         // Create new tab for seeding status
         const tabId = tabStore.createTab('', 'Seeding File...');
         tabStore.updateTab(tabId, { 
