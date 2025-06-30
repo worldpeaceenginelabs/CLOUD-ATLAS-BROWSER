@@ -685,9 +685,12 @@
                 
                 <td class="state-cell">
                   <span class="state-badge state-{torrent.status}">
-                    {torrent.status === 'downloading' ? 'Downloading' : 
-                     torrent.status === 'paused' ? 'Paused' : 
-                     torrent.status === 'completed' ? 'Completed' : 'Error'}
+                    {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
+                      ? 'Sharing'
+                      : torrent.status === 'downloading' ? 'Downloading'
+                      : torrent.status === 'paused' ? 'Paused'
+                      : torrent.status === 'completed' ? 'Completed'
+                      : 'Error'}
                   </span>
                 </td>
                 
@@ -824,9 +827,12 @@
                 
                 <td class="state-cell">
                   <span class="state-badge state-{torrent.status}">
-                    {torrent.status === 'downloading' ? 'Downloading' : 
-                     torrent.status === 'paused' ? 'Paused' : 
-                     torrent.status === 'completed' ? 'Completed' : 'Error'}
+                    {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
+                      ? 'Sharing'
+                      : torrent.status === 'downloading' ? 'Downloading'
+                      : torrent.status === 'paused' ? 'Paused'
+                      : torrent.status === 'completed' ? 'Completed'
+                      : 'Error'}
                   </span>
                 </td>
                 

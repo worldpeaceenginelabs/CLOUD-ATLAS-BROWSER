@@ -129,7 +129,7 @@ class PersistenceStore {
       request.onsuccess = () => {
         const torrents = request.result.map(torrent => ({
           ...torrent,
-          torrentType: torrent.torrentType || 'downloading', // Default to downloading if missing
+          // Only set torrentType if it exists in the stored data
           // Reset ephemeral data on load
           progress: 0,
           downloadSpeed: 0,
