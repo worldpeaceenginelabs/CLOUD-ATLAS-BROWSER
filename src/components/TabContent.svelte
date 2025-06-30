@@ -1122,7 +1122,7 @@
   .seeding-title {
     font-size: 2rem;
     font-weight: 700;
-    color: #1f2937;
+    color: #ffffff;
     margin-bottom: 0.5rem;
   }
 

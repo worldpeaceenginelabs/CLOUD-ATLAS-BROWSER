@@ -1,5 +1,5 @@
 <script>
-  import { Search, Send, Shield, RefreshCw, ArrowLeft, ArrowRight, MoreVertical } from 'lucide-svelte';
+  import { Search, Send, Shield, RefreshCw, ArrowLeft, ArrowRight, MoreVertical, Magnet } from 'lucide-svelte';
   import { torrentStore } from '../stores/torrentStore.js';
 
   export let url = '';
@@ -191,7 +191,7 @@
         aria-label="Send file via WebTorrent"
         title="Seed a file"
       >
-        <Send size={14} />
+        <Magnet size={14} />
         Send
       </button>
       
