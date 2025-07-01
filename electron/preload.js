@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   downloadFile: (magnetUri, fileName) => ipcRenderer.invoke('download-file', magnetUri, fileName),
   pauseTorrent: (magnetUri) => ipcRenderer.invoke('pause-torrent', magnetUri),
   
-  removeTorrent: (magnetUri) => ipcRenderer.invoke('remove-torrent', magnetUri),
+  removeTorrent: (magnetUri, keepFiles = false) => ipcRenderer.invoke('remove-torrent', magnetUri, keepFiles),
   getTorrentStats: () => ipcRenderer.invoke('get-torrent-stats'),
 
   // Web content management

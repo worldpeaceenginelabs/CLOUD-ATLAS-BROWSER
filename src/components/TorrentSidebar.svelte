@@ -211,7 +211,9 @@
   async function handleRemoveTorrent(torrent) {
     try {
       if (window.electronAPI) {
-        const success = await window.electronAPI.removeTorrent(torrent.magnetUri);
+        // For seeding torrents, pass keepFiles=true to prevent file deletion
+        const keepFiles = torrent.torrentType === 'sharing';
+        const success = await window.electronAPI.removeTorrent(torrent.magnetUri, keepFiles);
         if (success) {
           torrentStore.removeTorrent(torrent.infoHash);
           await persistenceStore.removeTorrent(torrent.infoHash);

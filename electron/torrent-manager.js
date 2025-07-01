@@ -678,7 +678,7 @@ class TorrentManager {
   }
 
   // Remove a torrent (MODIFIED - removes from streamable registry only on complete removal)
-  async removeTorrent(magnetUri) {
+  async removeTorrent(magnetUri, keepFiles = false) {
     try {
       // Handle paused torrents (not in client but files on disk)
       if (this.pausedTorrents.has(magnetUri)) {
@@ -686,17 +686,21 @@ class TorrentManager {
         
         console.log('Removing paused torrent, deleting files from:', torrentInfo.downloadPath);
         
-        // Delete files manually using stored path info
-        try {
-          if (fs.existsSync(torrentInfo.downloadPath)) {
-            fs.rmSync(torrentInfo.downloadPath, { recursive: true, force: true });
-            console.log('Paused torrent files deleted successfully:', torrentInfo.downloadPath);
-          } else {
-            console.log('Paused torrent files not found (may have been moved/deleted):', torrentInfo.downloadPath);
+        // Only delete files if keepFiles is false
+        if (!keepFiles) {
+          try {
+            if (fs.existsSync(torrentInfo.downloadPath)) {
+              fs.rmSync(torrentInfo.downloadPath, { recursive: true, force: true });
+              console.log('Paused torrent files deleted successfully:', torrentInfo.downloadPath);
+            } else {
+              console.log('Paused torrent files not found (may have been moved/deleted):', torrentInfo.downloadPath);
+            }
+          } catch (fsError) {
+            console.error('File deletion error for paused torrent:', fsError);
+            // Continue anyway - we'll still remove it from our tracking
           }
-        } catch (fsError) {
-          console.error('File deletion error for paused torrent:', fsError);
-          // Continue anyway - we'll still remove it from our tracking
+        } else {
+          console.log('Skipping file deletion for seeding torrent (paused)');
         }
         
         // Remove from paused torrents tracking
@@ -758,8 +762,8 @@ class TorrentManager {
             if (!err) {
               console.log('Active torrent removed from client:', magnetUri);
               
-              // Now manually delete files using our consistent approach
-              if (downloadPath) {
+              // Only delete files if keepFiles is false
+              if (!keepFiles && downloadPath) {
                 try {
                   if (fs.existsSync(downloadPath)) {
                     fs.rmSync(downloadPath, { recursive: true, force: true });
@@ -771,8 +775,8 @@ class TorrentManager {
                   console.error('File deletion error for active torrent:', fsError);
                   // Don't fail the operation - torrent was removed from client successfully
                 }
-              } else {
-                console.warn('Could not determine download path for file cleanup:', magnetUri);
+              } else if (keepFiles) {
+                console.log('Skipping file deletion for seeding torrent (active)');
               }
               
               // Clean up tracking

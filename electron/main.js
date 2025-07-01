@@ -143,7 +143,7 @@ ipcMain.handle('get-file-stream', (event, magnetUri, fileName) => torrentManager
 ipcMain.handle('get-file-blob-url', (event, magnetUri, fileName) => torrentManager.getFileBlobURL(magnetUri, fileName));
 ipcMain.handle('get-file-info', (event, magnetUri, fileName) => torrentManager.getFileInfo(magnetUri, fileName));
 
-ipcMain.handle('remove-torrent', (event, magnetUri) => torrentManager.removeTorrent(magnetUri));
+ipcMain.handle('remove-torrent', (event, magnetUri, keepFiles) => torrentManager.removeTorrent(magnetUri, keepFiles));
 ipcMain.handle('get-torrent-stats', () => torrentManager.getTorrentStats());
 
 // IPC Handlers - Browser Management
