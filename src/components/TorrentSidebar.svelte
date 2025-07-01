@@ -68,25 +68,20 @@
       // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
       for (const torrent of savedTorrents) {
-        // Check for duplicates before adding
-        if (!torrentStore.torrentExists(torrent.magnetUri)) {
-          torrentStore.addTorrent(torrent.magnetUri, torrent);
-        }
-        // Always re-add to WebTorrent client
-        if (window.electronAPI) {
+        if (torrent.torrentType === 'sharing' && torrent.seedPath) {
+          // Reseed the file using the original path
+          const seedResult = await window.electronAPI.seedFile(torrent.seedPath);
+          // Add to store after seeding
+          torrentStore.addTorrent(seedResult.magnetUri, {
+            ...seedResult,
+            seedPath: torrent.seedPath
+          }, 'sharing');
+        } else {
+          // Downloading torrents: re-add by magnet URI
           await window.electronAPI.addTorrent(torrent.magnetUri);
-          if (torrent.status === 'paused') {
-            await window.electronAPI.pauseTorrent(torrent.magnetUri);
-          }
+          torrentStore.addTorrent(torrent.magnetUri, torrent, 'downloading');
         }
-        // Update store with restored state
-        torrentStore.updateTorrent(torrent.infoHash, {
-          name: torrent.name,
-          status: torrent.status,
-          files: torrent.files,
-          dateAdded: new Date(torrent.dateAdded),
-          actualDownloadPath: torrent.actualDownloadPath
-        });
+        // Optionally update store with restored state if needed
       }
       if (savedTorrents.length > 0) {
         addLog(`Restored ${savedTorrents.length} torrents from previous session`, 'info');
@@ -186,7 +181,17 @@
       }
       
       if (window.electronAPI) {
-        const torrentInfo = await window.electronAPI.addTorrent(torrent.magnetUri);
+        let torrentInfo;
+        
+        // Handle seeding torrents differently - reseed the original file
+        if (torrent.torrentType === 'sharing' && torrent.seedPath) {
+          addLog(`Reseeding file: ${torrent.seedPath}`, 'info');
+          torrentInfo = await window.electronAPI.seedFile(torrent.seedPath);
+        } else {
+          // Handle downloading torrents - re-add by magnet URI
+          torrentInfo = await window.electronAPI.addTorrent(torrent.magnetUri);
+        }
+        
         if (torrentInfo) {
           torrentStore.resumeTorrent(torrent.infoHash);
           // Only save if status actually changed

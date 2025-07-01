@@ -459,10 +459,13 @@
         
         // Seed file via main process
         const seedResult = await window.electronAPI.seedFile(filePath);
-        
-        // Add to torrent store as a sharing torrent
+
+        // Add to torrent store as a sharing torrent, store seedPath
         if (seedResult && seedResult.magnetUri) {
-          const torrentId = torrentStore.addTorrent(seedResult.magnetUri, seedResult, 'sharing');
+          const torrentId = torrentStore.addTorrent(seedResult.magnetUri, {
+            ...seedResult,
+            seedPath: filePath // Store the original path
+          }, 'sharing');
           if (torrentId) {
             // Save to persistence
             const { persistenceStore } = await import('../stores/persistenceStore.js');
@@ -471,11 +474,12 @@
               magnetUri: seedResult.magnetUri,
               infoHash: torrentStore.extractInfoHash(seedResult.magnetUri),
               name: seedResult.name,
-              status: 'downloading', // seeding is still 'downloading' in logic
+              status: 'downloading',
               files: seedResult.files,
               dateAdded: new Date(),
               actualDownloadPath: null,
-              torrentType: 'sharing'
+              torrentType: 'sharing',
+              seedPath: filePath // Persist the original path
             }, true);
           }
         }
