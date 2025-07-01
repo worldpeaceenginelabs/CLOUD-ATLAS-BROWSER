@@ -27,6 +27,7 @@
 
   let downloadingTorrents = [];
   let sharingTorrents = [];
+  let websiteTorrents = [];
 
   // Subscribe to torrent store
   const unsubscribe = torrentStore.subscribe(state => {
@@ -35,6 +36,7 @@
     sidebarWidth = state.sidebarWidth;
     downloadingTorrents = torrents.filter(t => t.torrentType === 'downloading');
     sharingTorrents = torrents.filter(t => t.torrentType === 'sharing');
+    websiteTorrents = torrents.filter(t => t.websiteType);
   });
 
   // Reactive statement to ensure fullscreen state is always current
@@ -511,6 +513,26 @@
       document.removeEventListener('MSFullscreenChange', updateFullscreenState);
     };
   }
+
+  function handleOpenWebsite(torrent) {
+    if (torrent.status !== 'completed') return;
+    if (torrent.websiteType === 'static') {
+      // Open static site in new tab (local server URL)
+      const url = `http://127.0.0.1:18080/website/${torrent.infoHash}/index.html`;
+      if (window.electronAPI) {
+        window.electronAPI.createNewTabWithUrl(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    } else if (torrent.websiteType === 'repository') {
+      // Open repository in new tab with WebContainer (custom logic, to be implemented)
+      if (window.electronAPI) {
+        window.electronAPI.createNewTabWithUrl(`webcontainer://${torrent.infoHash}`);
+      } else {
+        alert('WebContainer support is only available in the Electron app.');
+      }
+    }
+  }
 </script>
 
 {#if sidebarOpen}
@@ -660,6 +682,41 @@
 
     <!-- Content -->
     <div class="content">
+      <!-- Website Section -->
+      <h3>Website</h3>
+      {#if websiteTorrents.length === 0}
+        <div class="empty-message">No website torrents</div>
+      {:else}
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Open</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each websiteTorrents as torrent (torrent.infoHash)}
+              <tr class="torrent-row">
+                <td>{torrent.name}</td>
+                <td>{torrent.websiteType === 'repository' ? 'Repository' : 'Static'}</td>
+                <td>{torrent.status === 'completed' ? 'Ready' : 'Downloading'}</td>
+                <td>
+                  <button
+                    class="file-btn open-btn"
+                    disabled={torrent.status !== 'completed'}
+                    on:click={() => handleOpenWebsite(torrent)}
+                  >
+                    Open
+                  </button>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+
       <!-- Downloading Section -->
       <h3>Downloading</h3>
       {#if downloadingTorrents.length === 0}
@@ -803,7 +860,7 @@
       {/if}
 
       <!-- Sharing Section -->
-      <h3>Sharing</h3>
+      <h3>Seeding</h3>
       {#if sharingTorrents.length === 0}
         <div class="empty-message">No active shares</div>
       {:else}
@@ -841,7 +898,7 @@
                 <td class="state-cell">
                   <span class="state-badge state-{torrent.status}">
                     {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
-                      ? 'Sharing'
+                      ? 'Seeding'
                       : torrent.status === 'downloading' ? 'Downloading'
                       : torrent.status === 'paused' ? 'Paused'
                       : torrent.status === 'completed' ? 'Completed'
