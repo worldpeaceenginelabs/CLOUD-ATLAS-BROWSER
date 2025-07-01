@@ -1,4 +1,5 @@
-![image](https://github.com/user-attachments/assets/dddbe768-5583-4b1e-90cb-9992134bb4d9)
+![image](https://github.com/user-attachments/assets/ce138fa0-2519-49a5-a88b-ba6e6dc70816)
+
 # Attention
 The picture is version 1.0.1 integrating the seeding into the torrent list, readding after restart (coming soon)
 
