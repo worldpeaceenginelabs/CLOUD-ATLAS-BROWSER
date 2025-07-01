@@ -678,7 +678,12 @@ class TorrentManager {
   }
 
   // Remove a torrent (MODIFIED - removes from streamable registry only on complete removal)
-  async removeTorrent(magnetUri, keepFiles = false) {
+  async removeTorrent(magnetUri, keepFiles) {
+    // Guard: only proceed if keepFiles is explicitly true or false
+    if (typeof keepFiles !== 'boolean') {
+      console.error('Refusing to remove torrent: keepFiles flag missing or invalid!');
+      return false;
+    }
     try {
       // Handle paused torrents (not in client but files on disk)
       if (this.pausedTorrents.has(magnetUri)) {
