@@ -68,20 +68,26 @@
       // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
       for (const torrent of savedTorrents) {
-        if (torrent.torrentType === 'sharing' && torrent.seedPath) {
-          // Reseed the file using the original path
-          const seedResult = await window.electronAPI.seedFile(torrent.seedPath);
-          // Add to store after seeding
-          torrentStore.addTorrent(seedResult.magnetUri, {
-            ...seedResult,
-            seedPath: torrent.seedPath
-          }, 'sharing');
-        } else {
-          // Downloading torrents: re-add by magnet URI
-          await window.electronAPI.addTorrent(torrent.magnetUri);
-          torrentStore.addTorrent(torrent.magnetUri, torrent, 'downloading');
-        }
-        // Optionally update store with restored state if needed
+        // 1. Add to store immediately as paused
+        torrentStore.addTorrent(torrent.magnetUri, torrent, torrent.torrentType);
+        torrentStore.setTorrentStatus(torrent.infoHash, 'paused');
+
+        // 2. Try to re-add/re-seed in the background
+        (async () => {
+          try {
+            if (torrent.torrentType === 'sharing' && torrent.seedPath) {
+              await window.electronAPI.seedFile(torrent.seedPath);
+              torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+            } else {
+              await window.electronAPI.addTorrent(torrent.magnetUri);
+              torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+            }
+          } catch (err) {
+            // 3. If it fails, leave as paused and optionally set an error
+            torrentStore.setTorrentStatus(torrent.infoHash, 'paused');
+            torrentStore.updateTorrent(torrent.infoHash, { error: err.message });
+          }
+        })();
       }
       if (savedTorrents.length > 0) {
         addLog(`Restored ${savedTorrents.length} torrents from previous session`, 'info');
