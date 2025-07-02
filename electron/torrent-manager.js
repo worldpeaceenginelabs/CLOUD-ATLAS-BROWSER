@@ -302,7 +302,8 @@ class TorrentManager {
             progress: 0,
             downloadSpeed: 0,
             uploadSpeed: 0,
-            peers: 0
+            peers: 0,
+            websiteType: null // Default value
           };
 
           resolve(torrentInfo);
@@ -613,7 +614,8 @@ class TorrentManager {
               name: f.name, 
               path: f.path,
               length: f.length 
-            })) : []
+            })) : [],
+            websiteType: null // Default value
           };
           
           this.pausedTorrents.set(magnetUri, torrentInfo);
@@ -650,7 +652,8 @@ class TorrentManager {
             name: torrentName,
             path: basePath,
             downloadPath: downloadPath,
-            files: []
+            files: [],
+            websiteType: null // Default value
           };
           
           this.pausedTorrents.set(magnetUri, torrentInfo);

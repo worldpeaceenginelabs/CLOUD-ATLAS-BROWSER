@@ -102,8 +102,9 @@ class PersistenceStore {
         files: torrent.files,
         dateAdded: torrent.dateAdded,
         actualDownloadPath: torrent.actualDownloadPath || null, // Store the REAL path from download event
-        torrentType: torrent.torrentType,
+        torrentType: torrent.torrentType === 'download' ? 'download' : torrent.torrentType === 'seeding' ? 'seeding' : torrent.torrentType === 'website' ? 'website' : null,
         seedPath: torrent.seedPath, // Persist the original path
+        websiteType: torrent.websiteType ?? null,
         // Don't save progress/speed data - these are ephemeral
       };
       

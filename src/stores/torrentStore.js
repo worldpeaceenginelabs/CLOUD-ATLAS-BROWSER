@@ -22,7 +22,7 @@ function createTorrentStore() {
     subscribe,
     
     // Add a new torrent with deduplication
-    addTorrent: (magnetUri, torrentInfo = null, torrentType = 'downloading') => {
+    addTorrent: (magnetUri, torrentInfo = null, torrentType = 'download') => {
       const infoHash = extractInfoHash(magnetUri);
       if (!infoHash) {
         console.error('Invalid magnet URI - cannot extract info hash');
@@ -54,7 +54,8 @@ function createTorrentStore() {
           actualDownloadPath: null,
           size: 0,
           eta: null,
-          torrentType
+          torrentType,
+          websiteType: torrentInfo?.websiteType ?? null,
         };
         return {
           ...state,

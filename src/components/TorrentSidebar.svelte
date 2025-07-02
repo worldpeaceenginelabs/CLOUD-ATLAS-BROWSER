@@ -26,15 +26,17 @@
   let isFullscreen = false;
 
   let downloadingTorrents = [];
-  let sharingTorrents = [];
+  let seedingTorrents = [];
+  let websiteTorrents = [];
 
   // Subscribe to torrent store
   const unsubscribe = torrentStore.subscribe(state => {
     torrents = state.torrents;
     sidebarOpen = state.sidebarOpen;
     sidebarWidth = state.sidebarWidth;
-    downloadingTorrents = torrents.filter(t => t.torrentType === 'downloading');
-    sharingTorrents = torrents.filter(t => t.torrentType === 'sharing');
+    downloadingTorrents = torrents.filter(t => t.torrentType === 'download');
+    seedingTorrents = torrents.filter(t => t.torrentType === 'seeding');
+    websiteTorrents = torrents.filter(t => t.torrentType === 'website');
   });
 
   // Reactive statement to ensure fullscreen state is always current
@@ -75,12 +77,12 @@
         // 2. Try to re-add/re-seed in the background
         (async () => {
           try {
-            if (torrent.torrentType === 'sharing' && torrent.seedPath) {
+            if (torrent.torrentType === 'seeding' && torrent.seedPath) {
               await window.electronAPI.seedFile(torrent.seedPath);
-              torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+              torrentStore.setTorrentStatus(torrent.infoHash, 'download');
             } else {
               await window.electronAPI.addTorrent(torrent.magnetUri);
-              torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+              torrentStore.setTorrentStatus(torrent.infoHash, 'download');
             }
           } catch (err) {
             // 3. If it fails, leave as paused and optionally set an error
@@ -181,7 +183,7 @@
   async function handleResumeTorrent(torrent) {
     try {
       // Prevent duplicate saves if already downloading
-      if (torrent.status === 'downloading') {
+      if (torrent.status === 'download') {
         addLog(`Already downloading: ${torrent.name}`, 'info');
         return;
       }
@@ -190,7 +192,7 @@
         let torrentInfo;
         
         // Handle seeding torrents differently - reseed the original file
-        if (torrent.torrentType === 'sharing' && torrent.seedPath) {
+        if (torrent.torrentType === 'seeding' && torrent.seedPath) {
           addLog(`Reseeding file: ${torrent.seedPath}`, 'info');
           torrentInfo = await window.electronAPI.seedFile(torrent.seedPath);
         } else {
@@ -201,8 +203,8 @@
         if (torrentInfo) {
           torrentStore.resumeTorrent(torrent.infoHash);
           // Only save if status actually changed
-          if (torrent.status !== 'downloading') {
-            await persistenceStore.saveTorrent({ ...torrent, status: 'downloading' }, false);
+          if (torrent.status !== 'download') {
+            await persistenceStore.saveTorrent({ ...torrent, status: 'download' }, false);
           }
           addLog(`Resumed: ${torrent.name}`, 'info');
         } else {
@@ -218,7 +220,7 @@
     try {
       if (window.electronAPI) {
         // For seeding torrents, pass keepFiles=true to prevent file deletion
-        const keepFiles = torrent.torrentType === 'sharing';
+        const keepFiles = torrent.torrentType === 'seeding';
         const success = await window.electronAPI.removeTorrent(torrent.magnetUri, keepFiles);
         if (success) {
           torrentStore.removeTorrent(torrent.infoHash);
@@ -478,7 +480,7 @@
 
   // Calculate total stats
   $: totalStats = torrents.reduce((acc, torrent) => {
-    acc.downloading += torrent.status === 'downloading' ? 1 : 0;
+    acc.downloading += torrent.status === 'download' ? 1 : 0;
     acc.paused += torrent.status === 'paused' ? 1 : 0;
     acc.completed += torrent.status === 'completed' ? 1 : 0;
     acc.totalDownloadSpeed += torrent.downloadSpeed || 0;
@@ -662,8 +664,8 @@
     <div class="content">
       <!-- Websites Section (was Downloading) -->
       <h3>Websites</h3>
-      {#if downloadingTorrents.length === 0}
-        <div class="empty-message">No active downloads</div>
+      {#if websiteTorrents.length === 0}
+        <div class="empty-message">No website torrents</div>
       {:else}
         <!-- Table -->
         <table>
@@ -676,37 +678,19 @@
             </tr>
           </thead>
           <tbody>
-            {#each downloadingTorrents as torrent (torrent.id)}
-              <!-- Main row -->
+            {#each websiteTorrents as torrent (torrent.id)}
+              <!-- Main row for website torrents -->
               <tr class="torrent-row">
                 <td class="name-cell">
                   <div class="name-content">
-                    {#if torrent.files && torrent.files.length > 0}
-                      <button class="expand-btn" on:click={() => toggleFiles(torrent)}>
-                        {#if torrent.filesExpanded}
-                          <ChevronDown size={14} />
-                        {:else}
-                          <ChevronRight size={14} />
-                        {/if}
-                      </button>
-                    {:else}
-                      <div class="expand-spacer"></div>
-                    {/if}
                     <span class="name-text" title={torrent.name}>{torrent.name}</span>
                   </div>
                 </td>
-                
                 <td class="state-cell">
                   <span class="state-badge state-{torrent.status}">
-                    {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
-                      ? 'Seeding'
-                      : torrent.status === 'downloading' ? 'Downloading'
-                      : torrent.status === 'paused' ? 'Paused'
-                      : torrent.status === 'completed' ? 'Completed'
-                      : 'Error'}
+                    Website
                   </span>
                 </td>
-                
                 <td class="progress-cell">
                   <div class="progress-container">
                     <div class="progress-bar">
@@ -714,89 +698,13 @@
                     </div>
                     <span class="progress-text">{Math.round(torrent.progress * 100)}%</span>
                   </div>
-                  {#if torrent.status === 'downloading'}
-                    <div class="speed-text">↓ {formatSpeed(torrent.downloadSpeed)} • {torrent.peers} peers</div>
-                  {/if}
                 </td>
-                
                 <td class="controls-cell">
                   <div class="controls">
-                    {#if torrent.status === 'downloading' || torrent.status === 'completed'}
-                      <button class="control-btn pause-btn" on:click={() => handlePauseTorrent(torrent)} title="Pause">
-                        <Pause size={16} />
-                      </button>
-                    {:else if torrent.status === 'paused'}
-                      <button class="control-btn play-btn" on:click={() => handleResumeTorrent(torrent)} title="Resume">
-                        <Play size={16} />
-                      </button>
-                    {/if}
-                    
-                    <button class="control-btn copy-btn" on:click={() => handleCopyMagnet(torrent)} title="Copy magnet">
-                      <ExternalLink size={16} />
-                    </button>
-                    
-                    <button class="control-btn remove-btn" on:click={() => {if(confirm('Remove?')) handleRemoveTorrent(torrent);}} title="Remove">
-                      <Trash2 size={16} />
-                    </button>
+                    <!-- Add controls for website torrents if needed -->
                   </div>
                 </td>
               </tr>
-
-              <!-- Files row -->
-              {#if torrent.filesExpanded && torrent.files}
-                <tr class="files-row">
-                  <td colspan="4" class="files-cell">
-                    <div class="files-container">
-                      {#each torrent.files as file}
-                        <div class="file-item">
-                          <span class="file-icon">{getFileIcon(file.name)}</span>
-                          <span class="file-name">{file.name}</span>
-                          <span class="file-size">{formatBytes(file.length)}</span>
-                          <div class="file-actions">
-                            {#if torrent.progress > 0}
-                              <!-- Video/Audio Stream Button -->
-                              {#if isStreamableFile(file.name)}
-                                <button 
-                                  class="file-btn stream-btn {!canStreamFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canStreamFile(torrent, file) && streamMediaFile(torrent, file)}
-                                  title={canStreamFile(torrent, file) ? 'Stream' : 'Not ready for streaming'}
-                                  disabled={!canStreamFile(torrent, file)}
-                                >
-                                  🎬 Stream
-                                </button>
-                              {/if}
-                              
-                              <!-- Image Preview Button -->
-                              {#if isPreviewableFile(file.name)}
-                                <button 
-                                  class="file-btn preview-btn {!canPreviewFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canPreviewFile(torrent, file) && previewImage(torrent, file)}
-                                  title={canPreviewFile(torrent, file) ? 'Preview' : 'Not ready for preview'}
-                                  disabled={!canPreviewFile(torrent, file)}
-                                >
-                                  👁️ Preview
-                                </button>
-                              {/if}
-                              
-                              <!-- Save Button (for all files) -->
-                              <button 
-                                class="file-btn save-btn" 
-                                on:click={() => handleDownloadFile(torrent, file)}
-                                title="Save to disk"
-                              >
-                                <Folder size={12} />
-                                Save
-                              </button>
-                            {:else}
-                              <span class="file-status">Waiting for download...</span>
-                            {/if}
-                          </div>
-                        </div>
-                      {/each}
-                    </div>
-                  </td>
-                </tr>
-              {/if}
             {/each}
           </tbody>
         </table>
@@ -840,9 +748,9 @@
                 
                 <td class="state-cell">
                   <span class="state-badge state-{torrent.status}">
-                    {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
+                    {torrent.torrentType === 'seeding' && torrent.status === 'download'
                       ? 'Seeding'
-                      : torrent.status === 'downloading' ? 'Downloading'
+                      : torrent.status === 'download' ? 'Downloading'
                       : torrent.status === 'paused' ? 'Paused'
                       : torrent.status === 'completed' ? 'Completed'
                       : 'Error'}
@@ -856,14 +764,14 @@
                     </div>
                     <span class="progress-text">{Math.round(torrent.progress * 100)}%</span>
                   </div>
-                  {#if torrent.status === 'downloading'}
+                  {#if torrent.status === 'download'}
                     <div class="speed-text">↓ {formatSpeed(torrent.downloadSpeed)} • {torrent.peers} peers</div>
                   {/if}
                 </td>
                 
                 <td class="controls-cell">
                   <div class="controls">
-                    {#if torrent.status === 'downloading' || torrent.status === 'completed'}
+                    {#if torrent.status === 'download' || torrent.status === 'completed'}
                       <button class="control-btn pause-btn" on:click={() => handlePauseTorrent(torrent)} title="Pause">
                         <Pause size={16} />
                       </button>
@@ -946,7 +854,7 @@
 
       <!-- Seeding Section (was Sharing) -->
       <h3>Seeding</h3>
-      {#if sharingTorrents.length === 0}
+      {#if seedingTorrents.length === 0}
         <div class="empty-message">No active shares</div>
       {:else}
         <!-- Table -->
@@ -960,7 +868,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each sharingTorrents as torrent (torrent.id)}
+            {#each seedingTorrents as torrent (torrent.id)}
               <!-- Main row -->
               <tr class="torrent-row">
                 <td class="name-cell">
@@ -982,9 +890,9 @@
                 
                 <td class="state-cell">
                   <span class="state-badge state-{torrent.status}">
-                    {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
+                    {torrent.torrentType === 'seeding' && torrent.status === 'download'
                       ? 'Seeding'
-                      : torrent.status === 'downloading' ? 'Downloading'
+                      : torrent.status === 'download' ? 'Downloading'
                       : torrent.status === 'paused' ? 'Paused'
                       : torrent.status === 'completed' ? 'Completed'
                       : 'Error'}
@@ -998,14 +906,14 @@
                     </div>
                     <span class="progress-text">{Math.round(torrent.progress * 100)}%</span>
                   </div>
-                  {#if torrent.status === 'downloading'}
+                  {#if torrent.status === 'download'}
                     <div class="speed-text">↓ {formatSpeed(torrent.downloadSpeed)} • {torrent.peers} peers</div>
                   {/if}
                 </td>
                 
                 <td class="controls-cell">
                   <div class="controls">
-                    {#if torrent.status === 'downloading' || torrent.status === 'completed'}
+                    {#if torrent.status === 'download' || torrent.status === 'completed'}
                       <button class="control-btn pause-btn" on:click={() => handlePauseTorrent(torrent)} title="Pause">
                         <Pause size={16} />
                       </button>
