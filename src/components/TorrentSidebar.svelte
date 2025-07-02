@@ -676,7 +676,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each downloadingTorrents as torrent (torrent.id)}
+            {#each downloadingTorrents as torrent (torrent.infoHash)}
               <!-- Main row -->
               <tr class="torrent-row">
                 <td class="name-cell">
@@ -818,7 +818,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each downloadingTorrents as torrent (torrent.id)}
+            {#each downloadingTorrents as torrent (torrent.infoHash)}
               <!-- Main row -->
               <tr class="torrent-row">
                 <td class="name-cell">
@@ -960,7 +960,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each sharingTorrents as torrent (torrent.id)}
+            {#each sharingTorrents as torrent (torrent.infoHash)}
               <!-- Main row -->
               <tr class="torrent-row">
                 <td class="name-cell">
