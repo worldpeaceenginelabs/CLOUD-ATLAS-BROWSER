@@ -721,7 +721,7 @@
                 
                 <td class="controls-cell">
                   <div class="controls">
-                    {#if torrent.status === 'downloading'}
+                    {#if torrent.status === 'downloading' || torrent.status === 'completed'}
                       <button class="control-btn pause-btn" on:click={() => handlePauseTorrent(torrent)} title="Pause">
                         <Pause size={16} />
                       </button>
@@ -863,7 +863,7 @@
                 
                 <td class="controls-cell">
                   <div class="controls">
-                    {#if torrent.status === 'downloading'}
+                    {#if torrent.status === 'downloading' || torrent.status === 'completed'}
                       <button class="control-btn pause-btn" on:click={() => handlePauseTorrent(torrent)} title="Pause">
                         <Pause size={16} />
                       </button>
@@ -1005,7 +1005,7 @@
                 
                 <td class="controls-cell">
                   <div class="controls">
-                    {#if torrent.status === 'downloading'}
+                    {#if torrent.status === 'downloading' || torrent.status === 'completed'}
                       <button class="control-btn pause-btn" on:click={() => handlePauseTorrent(torrent)} title="Pause">
                         <Pause size={16} />
                       </button>
