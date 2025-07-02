@@ -290,21 +290,43 @@ class TorrentManager {
 
         torrent.on('ready', () => {
           console.log('Torrent ready:', torrent.name);
-          
+          // Website detection logic
+          let torrentType = null;
+          let websiteType = null;
+          const files = torrent.files.map(file => ({
+            name: file.name,
+            length: file.length,
+            path: file.path
+          }));
+          // Find all index.html files
+          const indexFiles = files.filter(f => f.name.endsWith('index.html'));
+          if (indexFiles.length > 0) {
+            torrentType = 'website';
+            // Check for package.json in the same directory as each index.html
+            websiteType = 'static';
+            for (const idxFile of indexFiles) {
+              const dir = idxFile.path.replace(/\/index\.html$/, '').replace(/\\/g, '/');
+              const hasPackage = files.some(f => f.name === 'package.json' && f.path.replace(/\/package\.json$/, '').replace(/\\/g, '/') === dir);
+              if (hasPackage) {
+                websiteType = 'repository';
+                break;
+              }
+            }
+          } else {
+            torrentType = 'downloading';
+            websiteType = null;
+          }
           const torrentInfo = {
             magnetUri,
             name: torrent.name,
-            files: torrent.files.map(file => ({
-              name: file.name,
-              length: file.length,
-              path: file.path
-            })),
+            files,
             progress: 0,
             downloadSpeed: 0,
             uploadSpeed: 0,
-            peers: 0
+            peers: 0,
+            torrentType,
+            websiteType
           };
-
           resolve(torrentInfo);
         });
 

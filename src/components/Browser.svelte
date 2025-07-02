@@ -413,7 +413,7 @@
       
       if (torrentInfo) {
         // Add to torrent store (with built-in deduplication)
-        const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo, 'downloading');
+        const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo, torrentInfo.torrentType || 'downloading');
         
         if (torrentId) {
           addLog(`Torrent added: ${torrentInfo.name}`, 'success');
@@ -429,7 +429,8 @@
             files: torrentInfo.files,
             dateAdded: new Date(),
             actualDownloadPath: null, // Will be set when download event fires
-            torrentType: 'downloading'
+            torrentType: torrentInfo.torrentType || 'downloading',
+            websiteType: torrentInfo.websiteType ?? null
           }, true); // ← TRUE = this is a new torrent, check for duplicates
           
           if (!saved) {

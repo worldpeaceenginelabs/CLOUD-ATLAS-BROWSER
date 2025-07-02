@@ -27,6 +27,7 @@
 
   let downloadingTorrents = [];
   let sharingTorrents = [];
+  let websiteTorrents = [];
 
   // Subscribe to torrent store
   const unsubscribe = torrentStore.subscribe(state => {
@@ -35,6 +36,7 @@
     sidebarWidth = state.sidebarWidth;
     downloadingTorrents = torrents.filter(t => t.torrentType === 'downloading');
     sharingTorrents = torrents.filter(t => t.torrentType === 'sharing');
+    websiteTorrents = torrents.filter(t => t.torrentType === 'website');
   });
 
   // Reactive statement to ensure fullscreen state is always current
@@ -660,24 +662,23 @@
 
     <!-- Content -->
     <div class="content">
-      <!-- Websites Section (was Downloading) -->
+      <!-- Websites Section -->
       <h3>Websites</h3>
-      {#if downloadingTorrents.length === 0}
-        <div class="empty-message">No active downloads</div>
+      {#if websiteTorrents.length === 0}
+        <div class="empty-message">No websites</div>
       {:else}
-        <!-- Table -->
         <table>
           <thead>
             <tr>
               <th>Name</th>
+              <th>Type</th>
               <th>State</th>
               <th>Progress</th>
               <th>Controls</th>
             </tr>
           </thead>
           <tbody>
-            {#each downloadingTorrents as torrent (torrent.infoHash)}
-              <!-- Main row -->
+            {#each websiteTorrents as torrent (torrent.infoHash)}
               <tr class="torrent-row">
                 <td class="name-cell">
                   <div class="name-content">
@@ -695,18 +696,17 @@
                     <span class="name-text" title={torrent.name}>{torrent.name}</span>
                   </div>
                 </td>
-                
+                <td class="type-cell">
+                  <span class="website-type-badge">{torrent.websiteType || 'Unknown'}</span>
+                </td>
                 <td class="state-cell">
                   <span class="state-badge state-{torrent.status}">
-                    {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
-                      ? 'Seeding'
-                      : torrent.status === 'downloading' ? 'Downloading'
+                    {torrent.status === 'downloading' ? 'Downloading'
                       : torrent.status === 'paused' ? 'Paused'
                       : torrent.status === 'completed' ? 'Completed'
                       : 'Error'}
                   </span>
                 </td>
-                
                 <td class="progress-cell">
                   <div class="progress-container">
                     <div class="progress-bar">
@@ -718,7 +718,6 @@
                     <div class="speed-text">↓ {formatSpeed(torrent.downloadSpeed)} • {torrent.peers} peers</div>
                   {/if}
                 </td>
-                
                 <td class="controls-cell">
                   <div class="controls">
                     {#if torrent.status === 'downloading' || torrent.status === 'completed'}
@@ -730,22 +729,18 @@
                         <Play size={16} />
                       </button>
                     {/if}
-                    
                     <button class="control-btn copy-btn" on:click={() => handleCopyMagnet(torrent)} title="Copy magnet">
                       <ExternalLink size={16} />
                     </button>
-                    
                     <button class="control-btn remove-btn" on:click={() => {if(confirm('Remove?')) handleRemoveTorrent(torrent);}} title="Remove">
                       <Trash2 size={16} />
                     </button>
                   </div>
                 </td>
               </tr>
-
-              <!-- Files row -->
               {#if torrent.filesExpanded && torrent.files}
                 <tr class="files-row">
-                  <td colspan="4" class="files-cell">
+                  <td colspan="5" class="files-cell">
                     <div class="files-container">
                       {#each torrent.files as file}
                         <div class="file-item">
@@ -765,7 +760,6 @@
                                   🎬 Stream
                                 </button>
                               {/if}
-                              
                               <!-- Image Preview Button -->
                               {#if isPreviewableFile(file.name)}
                                 <button 
@@ -777,7 +771,6 @@
                                   👁️ Preview
                                 </button>
                               {/if}
-                              
                               <!-- Save Button (for all files) -->
                               <button 
                                 class="file-btn save-btn" 

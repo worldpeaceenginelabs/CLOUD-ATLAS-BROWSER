@@ -54,7 +54,8 @@ function createTorrentStore() {
           actualDownloadPath: null,
           size: 0,
           eta: null,
-          torrentType
+          torrentType,
+          websiteType: torrentInfo?.websiteType ?? null
         };
         return {
           ...state,
@@ -81,7 +82,7 @@ function createTorrentStore() {
       update(state => ({
         ...state,
         torrents: state.torrents.map(torrent => 
-          torrent.infoHash === infoHash ? { ...torrent, ...updates } : torrent
+          torrent.infoHash === infoHash ? { ...torrent, ...updates, websiteType: updates.websiteType ?? torrent.websiteType ?? null } : torrent
         )
       }));
     },
