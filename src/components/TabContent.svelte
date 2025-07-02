@@ -1,6 +1,5 @@
 <script>
   import { RefreshCw, X } from 'lucide-svelte';
-  import WebContainerTab from './WebContainerTab.svelte';
   
   export let tab;
   export let active = false;
@@ -66,9 +65,7 @@
 </script>
 
 <div class="tab-content {active ? 'active' : 'hidden'} h-full bg-white">
-  {#if tab.url && tab.url.startsWith('webcontainer://')}
-    <WebContainerTab infoHash={tab.url.replace('webcontainer://', '')} {addLog} />
-  {:else if tab.viewId}
+  {#if tab.viewId}
     <!-- Web Content (handled by BrowserView in main process) -->
     <div class="web-content-placeholder h-full flex items-center justify-center bg-white relative">
       {#if tab.processStatus === 'crashed'}

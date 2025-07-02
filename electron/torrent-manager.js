@@ -93,52 +93,11 @@ class TorrentManager {
     this.startHttpServer();
   }
 
-  // Start local HTTP server for streaming and website serving
+  // Start local HTTP server for streaming
   startHttpServer() {
     if (this.httpServer) return;
     this.httpServer = http.createServer((req, res) => {
       const parsedUrl = url.parse(req.url, true);
-      // Website serving route
-      const websiteMatch = parsedUrl.pathname.match(/^\/website\/([a-zA-Z0-9]+)\/(.*)$/);
-      if (websiteMatch) {
-        const infoHash = websiteMatch[1].toLowerCase();
-        const filePath = websiteMatch[2] || 'index.html';
-        let torrent = this.activeTorrents.get(infoHash);
-        if (!torrent || !torrent.files) {
-          const torrentInfo = this.torrentInfoMap.get(infoHash);
-          if (torrentInfo) {
-            const absPath = path.join(torrentInfo.path, torrentInfo.name, filePath);
-            if (fs.existsSync(absPath)) {
-              const stat = fs.statSync(absPath);
-              if (stat.isFile()) {
-                res.writeHead(200, { 'Content-Type': this.getMimeType(filePath), 'Content-Length': stat.size, 'Access-Control-Allow-Origin': '*' });
-                fs.createReadStream(absPath).pipe(res);
-                return;
-              }
-            }
-          }
-          res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
-          res.end('File not found');
-          return;
-        }
-        // Find file in torrent
-        const file = torrent.files.find(f => f.path === filePath || f.name === filePath);
-        if (file && file.downloaded === file.length) {
-          // Serve from disk if possible
-          const absPath = path.join(torrent.path, torrent.name, file.path);
-          if (fs.existsSync(absPath)) {
-            const stat = fs.statSync(absPath);
-            if (stat.isFile()) {
-              res.writeHead(200, { 'Content-Type': this.getMimeType(filePath), 'Content-Length': stat.size, 'Access-Control-Allow-Origin': '*' });
-              fs.createReadStream(absPath).pipe(res);
-              return;
-            }
-          }
-        }
-        res.writeHead(404, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
-        res.end('File not found');
-        return;
-      }
       const match = parsedUrl.pathname.match(/^\/stream\/([a-zA-Z0-9]+)\/(.+)$/);
       if (match) {
         const infoHash = match[1].toLowerCase();
@@ -332,14 +291,6 @@ class TorrentManager {
         torrent.on('ready', () => {
           console.log('Torrent ready:', torrent.name);
           
-          // Website detection logic
-          let websiteType = null;
-          if (torrent.files) {
-            const hasIndexHtml = torrent.files.some(f => f.name === 'index.html');
-            const hasPackageJson = torrent.files.some(f => f.name === 'package.json');
-            if (hasIndexHtml && hasPackageJson) websiteType = 'repository';
-            else if (hasIndexHtml) websiteType = 'static';
-          }
           const torrentInfo = {
             magnetUri,
             name: torrent.name,
@@ -351,8 +302,7 @@ class TorrentManager {
             progress: 0,
             downloadSpeed: 0,
             uploadSpeed: 0,
-            peers: 0,
-            websiteType
+            peers: 0
           };
 
           resolve(torrentInfo);

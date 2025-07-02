@@ -37,14 +37,6 @@ function createTorrentStore() {
           console.log('Torrent already exists:', existing.name || magnetUri);
           return state; // No changes
         }
-        // Website detection logic
-        let websiteType = null;
-        if (torrentInfo && torrentInfo.files) {
-          const hasIndexHtml = torrentInfo.files.some(f => f.name === 'index.html');
-          const hasPackageJson = torrentInfo.files.some(f => f.name === 'package.json');
-          if (hasIndexHtml && hasPackageJson) websiteType = 'repository';
-          else if (hasIndexHtml) websiteType = 'static';
-        }
         const newTorrent = {
           infoHash,
           magnetUri,
@@ -62,8 +54,7 @@ function createTorrentStore() {
           actualDownloadPath: null,
           size: 0,
           eta: null,
-          torrentType,
-          websiteType
+          torrentType
         };
         return {
           ...state,
@@ -89,18 +80,9 @@ function createTorrentStore() {
     updateTorrent: (infoHash, updates) => {
       update(state => ({
         ...state,
-        torrents: state.torrents.map(torrent => {
-          // Website detection logic on update
-          let websiteType = torrent.websiteType;
-          if (updates.files) {
-            const hasIndexHtml = updates.files.some(f => f.name === 'index.html');
-            const hasPackageJson = updates.files.some(f => f.name === 'package.json');
-            if (hasIndexHtml && hasPackageJson) websiteType = 'repository';
-            else if (hasIndexHtml) websiteType = 'static';
-            else websiteType = null;
-          }
-          return torrent.infoHash === infoHash ? { ...torrent, ...updates, websiteType } : torrent;
-        })
+        torrents: state.torrents.map(torrent => 
+          torrent.infoHash === infoHash ? { ...torrent, ...updates } : torrent
+        )
       }));
     },
 

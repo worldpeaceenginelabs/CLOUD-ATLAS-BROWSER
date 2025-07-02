@@ -31,8 +31,7 @@
   },
   "dependencies": {
     "webtorrent": "^2.6.8",
-    "lucide-svelte": "^0.523.0",
-    "@webcontainer/api": "^1.6.1"
+    "lucide-svelte": "^0.523.0"
   },
   "build": {
     "appId": "cloudatlas.club",
