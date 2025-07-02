@@ -1,4 +1,4 @@
-import { dialog } from 'electron';
+import { dialog, shell } from 'electron';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
@@ -313,7 +313,6 @@ class FileManager {
   // Open file in default application
   async openFile(filePath) {
     try {
-      const { shell } = require('electron');
       await shell.openPath(filePath);
       console.log('Opened file:', filePath);
       return true;
@@ -326,8 +325,7 @@ class FileManager {
   // Show file in folder
   async showFileInFolder(filePath) {
     try {
-      const { shell } = require('electron');
-      shell.showItemInFolder(filePath);
+      await shell.showItemInFolder(filePath);
       console.log('Showed file in folder:', filePath);
       return true;
     } catch (error) {
@@ -400,6 +398,19 @@ class FileManager {
   // Cleanup
   destroy() {
     console.log('File manager destroyed');
+  }
+
+  // Open the default download (root) folder or a specific folder
+  async openRootFolder(folderPath) {
+    try {
+      const targetPath = folderPath || this.defaultDownloadPath;
+      await shell.openPath(targetPath);
+      console.log('Opened root folder:', targetPath);
+      return true;
+    } catch (error) {
+      console.error('Error opening root folder:', error);
+      return false;
+    }
   }
 }
 

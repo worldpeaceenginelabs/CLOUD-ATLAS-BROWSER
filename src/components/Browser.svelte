@@ -465,7 +465,8 @@
         if (seedResult && seedResult.magnetUri) {
           const torrentId = torrentStore.addTorrent(seedResult.magnetUri, {
             ...seedResult,
-            seedPath: filePath // Store the original path
+            seedPath: filePath, // Store the original path
+            actualDownloadPath: filePath // Store as root folder for seeding
           }, 'sharing');
           if (torrentId) {
             // Save to persistence
@@ -478,7 +479,7 @@
               status: 'downloading',
               files: seedResult.files,
               dateAdded: new Date(),
-              actualDownloadPath: null,
+              actualDownloadPath: filePath, // Store as root folder for seeding
               torrentType: 'sharing',
               seedPath: filePath // Persist the original path
             }, true);

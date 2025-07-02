@@ -120,6 +120,7 @@ app.on('open-url', (event, url) => {
 ipcMain.handle('select-file', () => fileManager.selectFile());
 ipcMain.handle('show-save-dialog', (event, defaultName) => fileManager.showSaveDialog(defaultName));
 ipcMain.handle('get-download-path', () => fileManager.getDefaultDownloadPath());
+ipcMain.handle('open-root-folder', (event, folderPath) => fileManager.openRootFolder(folderPath));
 
 // IPC Handlers - File System Operations  
 ipcMain.handle('path-exists', async (event, filePath) => {

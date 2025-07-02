@@ -51,7 +51,7 @@ function createTorrentStore() {
           files: torrentInfo?.files || [],
           dateAdded: new Date(),
           error: null,
-          actualDownloadPath: null,
+          actualDownloadPath: torrentInfo?.actualDownloadPath || null,
           size: 0,
           eta: null,
           torrentType,

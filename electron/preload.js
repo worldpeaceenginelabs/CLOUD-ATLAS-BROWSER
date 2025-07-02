@@ -91,7 +91,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Cleanup
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
-  }
+  },
+
+  // New: Open root folder
+  openRootFolder: (folderPath) => ipcRenderer.invoke('open-root-folder', folderPath),
 });
 
 // Basic console for debugging (only if not already exists)

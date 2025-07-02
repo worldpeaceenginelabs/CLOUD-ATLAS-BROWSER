@@ -70,6 +70,10 @@
       // Load saved torrents
       const savedTorrents = await persistenceStore.loadTorrents();
       for (const torrent of savedTorrents) {
+        // Ensure actualDownloadPath is set for seeding torrents
+        if (torrent.torrentType === 'sharing' && !torrent.actualDownloadPath && torrent.seedPath) {
+          torrent.actualDownloadPath = torrent.seedPath;
+        }
         // 1. Add to store immediately as paused
         torrentStore.addTorrent(torrent.magnetUri, torrent, torrent.torrentType);
         torrentStore.setTorrentStatus(torrent.infoHash, 'paused');
@@ -251,6 +255,18 @@
   function handleCopyMagnet(torrent) {
     navigator.clipboard.writeText(torrent.magnetUri);
     addLog('Magnet link copied to clipboard', 'success');
+  }
+
+  // Add this function to handle opening the root folder
+  async function handleOpenRootFolder(torrent) {
+    if (window.electronAPI && torrent.actualDownloadPath) {
+      const result = await window.electronAPI.openRootFolder(torrent.actualDownloadPath);
+      if (!result) {
+        addLog('Failed to open torrent root folder', 'error');
+      }
+    } else {
+      addLog('No root folder path available for this torrent', 'error');
+    }
   }
 
   function toggleFiles(torrent) {
@@ -732,6 +748,9 @@
                     <button class="control-btn copy-btn" on:click={() => handleCopyMagnet(torrent)} title="Copy magnet">
                       <ExternalLink size={16} />
                     </button>
+                    <button class="control-btn folder-btn" on:click={() => handleOpenRootFolder(torrent)} title="Open root folder">
+                      <Folder size={16} />
+                    </button>
                     <button class="control-btn remove-btn" on:click={() => {if(confirm('Remove?')) handleRemoveTorrent(torrent);}} title="Remove">
                       <Trash2 size={16} />
                     </button>
@@ -771,15 +790,6 @@
                                   👁️ Preview
                                 </button>
                               {/if}
-                              <!-- Save Button (for all files) -->
-                              <button 
-                                class="file-btn save-btn" 
-                                on:click={() => handleDownloadFile(torrent, file)}
-                                title="Save to disk"
-                              >
-                                <Folder size={12} />
-                                Save
-                              </button>
                             {:else}
                               <span class="file-status">Waiting for download...</span>
                             {/if}
@@ -870,6 +880,10 @@
                       <ExternalLink size={16} />
                     </button>
                     
+                    <button class="control-btn folder-btn" on:click={() => handleOpenRootFolder(torrent)} title="Open root folder">
+                      <Folder size={16} />
+                    </button>
+                    
                     <button class="control-btn remove-btn" on:click={() => {if(confirm('Remove?')) handleRemoveTorrent(torrent);}} title="Remove">
                       <Trash2 size={16} />
                     </button>
@@ -912,16 +926,6 @@
                                   👁️ Preview
                                 </button>
                               {/if}
-                              
-                              <!-- Save Button (for all files) -->
-                              <button 
-                                class="file-btn save-btn" 
-                                on:click={() => handleDownloadFile(torrent, file)}
-                                title="Save to disk"
-                              >
-                                <Folder size={12} />
-                                Save
-                              </button>
                             {:else}
                               <span class="file-status">Waiting for download...</span>
                             {/if}
@@ -997,6 +1001,9 @@
                     <button class="control-btn copy-btn" on:click={() => handleCopyMagnet(torrent)} title="Copy magnet">
                       <ExternalLink size={16} />
                     </button>
+                    <button class="control-btn folder-btn" on:click={() => handleOpenRootFolder(torrent)} title="Open root folder">
+                      <Folder size={16} />
+                    </button>
                     <button class="control-btn remove-btn" on:click={() => {if(confirm('Remove?')) handleRemoveTorrent(torrent);}} title="Remove">
                       <Trash2 size={16} />
                     </button>
@@ -1034,14 +1041,6 @@
                                   👁️ Preview
                                 </button>
                               {/if}
-                              <button 
-                                class="file-btn save-btn" 
-                                on:click={() => handleDownloadFile(torrent, file)}
-                                title="Save to disk"
-                              >
-                                <Folder size={12} />
-                                Save
-                              </button>
                             {:else}
                               <span class="file-status">Waiting for download...</span>
                             {/if}
@@ -1464,14 +1463,6 @@
 
   .preview-btn:hover:not(:disabled) {
     background: #d97706;
-  }
-
-  .save-btn {
-    background: #6b7280;
-  }
-
-  .save-btn:hover:not(:disabled) {
-    background: #4b5563;
   }
 
   /* Media Player Section */
