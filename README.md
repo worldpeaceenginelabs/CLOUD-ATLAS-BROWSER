@@ -1,7 +1,7 @@
-![image](https://github.com/user-attachments/assets/ce138fa0-2519-49a5-a88b-ba6e6dc70816)
+![image](https://github.com/user-attachments/assets/9fb7cc00-dd77-45eb-921f-10af82a39bc8)
 
 # Attention
-The picture is version 1.0.1 integrating the seeding into the torrent list, readding after restart (coming soon)
+The picture is version 1.0.1 integrating magnet link website hosting & seeding into the torrent list, and readding them after restart (will be released soon after some serious UX debugging)
 
 # 🌐 Cloud Atlas Browser
 
