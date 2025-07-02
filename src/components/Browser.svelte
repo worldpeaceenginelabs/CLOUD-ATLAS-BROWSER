@@ -486,14 +486,6 @@
           }
         }
 
-        // Create new tab for seeding status
-        const tabId = tabStore.createTab('', 'Seeding File...');
-        tabStore.updateTab(tabId, { 
-          seedingFile: filePath,
-          generatedMagnet: seedResult.magnetUri,
-          loading: false 
-        });
-        
         addLog(`File seeded: ${seedResult.magnetUri}`, 'success');
       }
     } catch (error) {
