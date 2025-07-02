@@ -847,7 +847,7 @@
                       ? 'Seeding'
                       : torrent.status === 'downloading' ? 'Downloading'
                       : torrent.status === 'paused' ? 'Paused'
-                      : torrent.status === 'completed' ? 'Completed'
+                      : torrent.status === 'completed' ? 'Seeding'
                       : 'Error'}
                   </span>
                 </td>
