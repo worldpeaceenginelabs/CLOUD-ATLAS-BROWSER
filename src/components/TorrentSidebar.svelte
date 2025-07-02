@@ -83,10 +83,15 @@
           try {
             if (torrent.torrentType === 'sharing' && torrent.seedPath) {
               await window.electronAPI.seedFile(torrent.seedPath);
-              torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+              // Only set to 'downloading' if it was not paused
+              if (torrent.status !== 'paused') {
+                torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+              }
             } else {
               await window.electronAPI.addTorrent(torrent.magnetUri);
-              torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+              if (torrent.status !== 'paused') {
+                torrentStore.setTorrentStatus(torrent.infoHash, 'downloading');
+              }
             }
           } catch (err) {
             // 3. If it fails, leave as paused and optionally set an error
