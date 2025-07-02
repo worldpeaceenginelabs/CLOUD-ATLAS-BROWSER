@@ -413,7 +413,7 @@
       
       if (torrentInfo) {
         // Add to torrent store (with built-in deduplication)
-        const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo, 'download');
+        const torrentId = torrentStore.addTorrent(magnetUri, torrentInfo, 'downloading');
         
         if (torrentId) {
           addLog(`Torrent added: ${torrentInfo.name}`, 'success');
@@ -425,12 +425,11 @@
             magnetUri,
             infoHash: torrentStore.extractInfoHash(magnetUri),
             name: torrentInfo.name,
-            status: 'download',
+            status: 'downloading',
             files: torrentInfo.files,
             dateAdded: new Date(),
             actualDownloadPath: null, // Will be set when download event fires
-            torrentType: 'download',
-            websiteType: null
+            torrentType: 'downloading'
           }, true); // ← TRUE = this is a new torrent, check for duplicates
           
           if (!saved) {
@@ -466,7 +465,7 @@
           const torrentId = torrentStore.addTorrent(seedResult.magnetUri, {
             ...seedResult,
             seedPath: filePath // Store the original path
-          }, 'seeding');
+          }, 'sharing');
           if (torrentId) {
             // Save to persistence
             const { persistenceStore } = await import('../stores/persistenceStore.js');
@@ -475,13 +474,12 @@
               magnetUri: seedResult.magnetUri,
               infoHash: torrentStore.extractInfoHash(seedResult.magnetUri),
               name: seedResult.name,
-              status: 'download',
+              status: 'downloading',
               files: seedResult.files,
               dateAdded: new Date(),
               actualDownloadPath: null,
-              torrentType: 'seeding',
-              seedPath: filePath, // Persist the original path
-              websiteType: null
+              torrentType: 'sharing',
+              seedPath: filePath // Persist the original path
             }, true);
           }
         }
