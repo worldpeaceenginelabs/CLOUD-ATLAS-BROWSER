@@ -972,30 +972,17 @@
                     <span class="name-text" title={torrent.name}>{torrent.name}</span>
                   </div>
                 </td>
-                
                 <td class="state-cell">
-                  <span class="state-badge state-{torrent.status}">
-                    {torrent.torrentType === 'sharing' && torrent.status === 'downloading'
-                      ? 'Seeding'
-                      : torrent.status === 'downloading' ? 'Downloading'
-                      : torrent.status === 'paused' ? 'Paused'
-                      : torrent.status === 'completed' ? 'Completed'
-                      : 'Error'}
-                  </span>
+                  <span class="state-badge state-completed">Seeding</span>
                 </td>
-                
                 <td class="progress-cell">
                   <div class="progress-container">
                     <div class="progress-bar">
-                      <div class="progress-fill" style="width: {Math.round(torrent.progress * 100)}%"></div>
+                      <div class="progress-fill" style="width: 100%"></div>
                     </div>
-                    <span class="progress-text">{Math.round(torrent.progress * 100)}%</span>
+                    <span class="progress-text">100%</span>
                   </div>
-                  {#if torrent.status === 'downloading'}
-                    <div class="speed-text">↓ {formatSpeed(torrent.downloadSpeed)} • {torrent.peers} peers</div>
-                  {/if}
                 </td>
-                
                 <td class="controls-cell">
                   <div class="controls">
                     {#if torrent.status === 'downloading' || torrent.status === 'completed'}
@@ -1007,19 +994,15 @@
                         <Play size={16} />
                       </button>
                     {/if}
-                    
                     <button class="control-btn copy-btn" on:click={() => handleCopyMagnet(torrent)} title="Copy magnet">
                       <ExternalLink size={16} />
                     </button>
-                    
                     <button class="control-btn remove-btn" on:click={() => {if(confirm('Remove?')) handleRemoveTorrent(torrent);}} title="Remove">
                       <Trash2 size={16} />
                     </button>
                   </div>
                 </td>
               </tr>
-
-              <!-- Files row -->
               {#if torrent.filesExpanded && torrent.files}
                 <tr class="files-row">
                   <td colspan="4" class="files-cell">
@@ -1031,7 +1014,6 @@
                           <span class="file-size">{formatBytes(file.length)}</span>
                           <div class="file-actions">
                             {#if torrent.progress > 0}
-                              <!-- Video/Audio Stream Button -->
                               {#if isStreamableFile(file.name)}
                                 <button 
                                   class="file-btn stream-btn {!canStreamFile(torrent, file) ? 'disabled' : ''}" 
@@ -1042,8 +1024,6 @@
                                   🎬 Stream
                                 </button>
                               {/if}
-                              
-                              <!-- Image Preview Button -->
                               {#if isPreviewableFile(file.name)}
                                 <button 
                                   class="file-btn preview-btn {!canPreviewFile(torrent, file) ? 'disabled' : ''}" 
@@ -1054,8 +1034,6 @@
                                   👁️ Preview
                                 </button>
                               {/if}
-                              
-                              <!-- Save Button (for all files) -->
                               <button 
                                 class="file-btn save-btn" 
                                 on:click={() => handleDownloadFile(torrent, file)}
