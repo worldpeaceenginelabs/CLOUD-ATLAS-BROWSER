@@ -491,14 +491,6 @@
     return imageExtensions.includes(ext);
   }
 
-  function canStreamFile(torrent, file) {
-    return torrent.progress > 0 && isStreamableFile(file.name);
-  }
-
-  function canPreviewFile(torrent, file) {
-    return torrent.progress > 0 && isPreviewableFile(file.name);
-  }
-
   // Calculate total stats
   $: totalStats = torrents.reduce((acc, torrent) => {
     acc.downloading += torrent.status === 'downloading' ? 1 : 0;
@@ -772,31 +764,23 @@
                           <span class="file-name">{file.name}</span>
                           <span class="file-size">{formatBytes(file.length)}</span>
                           <div class="file-actions">
-                            {#if torrent.progress > 0}
-                              <!-- Video/Audio Stream Button -->
-                              {#if isStreamableFile(file.name)}
-                                <button 
-                                  class="file-btn stream-btn {!canStreamFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canStreamFile(torrent, file) && streamMediaFile(torrent, file)}
-                                  title={canStreamFile(torrent, file) ? 'Stream' : 'Not ready for streaming'}
-                                  disabled={!canStreamFile(torrent, file)}
-                                >
-                                  🎬 Stream
-                                </button>
-                              {/if}
-                              <!-- Image Preview Button -->
-                              {#if isPreviewableFile(file.name)}
-                                <button 
-                                  class="file-btn preview-btn {!canPreviewFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canPreviewFile(torrent, file) && previewImage(torrent, file)}
-                                  title={canPreviewFile(torrent, file) ? 'Preview' : 'Not ready for preview'}
-                                  disabled={!canPreviewFile(torrent, file)}
-                                >
-                                  👁️ Preview
-                                </button>
-                              {/if}
-                            {:else}
-                              <span class="file-status">Waiting for download...</span>
+                            {#if isStreamableFile(file.name)}
+                              <button 
+                                class="file-btn stream-btn" 
+                                on:click={() => streamMediaFile(torrent, file)}
+                                title="Stream"
+                              >
+                                🎬 Stream
+                              </button>
+                            {/if}
+                            {#if isPreviewableFile(file.name)}
+                              <button 
+                                class="file-btn preview-btn" 
+                                on:click={() => previewImage(torrent, file)}
+                                title="Preview"
+                              >
+                                👁️ Preview
+                              </button>
                             {/if}
                           </div>
                         </div>
@@ -907,32 +891,23 @@
                           <span class="file-name">{file.name}</span>
                           <span class="file-size">{formatBytes(file.length)}</span>
                           <div class="file-actions">
-                            {#if torrent.progress > 0}
-                              <!-- Video/Audio Stream Button -->
-                              {#if isStreamableFile(file.name)}
-                                <button 
-                                  class="file-btn stream-btn {!canStreamFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canStreamFile(torrent, file) && streamMediaFile(torrent, file)}
-                                  title={canStreamFile(torrent, file) ? 'Stream' : 'Not ready for streaming'}
-                                  disabled={!canStreamFile(torrent, file)}
-                                >
-                                  🎬 Stream
-                                </button>
-                              {/if}
-                              
-                              <!-- Image Preview Button -->
-                              {#if isPreviewableFile(file.name)}
-                                <button 
-                                  class="file-btn preview-btn {!canPreviewFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canPreviewFile(torrent, file) && previewImage(torrent, file)}
-                                  title={canPreviewFile(torrent, file) ? 'Preview' : 'Not ready for preview'}
-                                  disabled={!canPreviewFile(torrent, file)}
-                                >
-                                  👁️ Preview
-                                </button>
-                              {/if}
-                            {:else}
-                              <span class="file-status">Waiting for download...</span>
+                            {#if isStreamableFile(file.name)}
+                              <button 
+                                class="file-btn stream-btn" 
+                                on:click={() => streamMediaFile(torrent, file)}
+                                title="Stream"
+                              >
+                                🎬 Stream
+                              </button>
+                            {/if}
+                            {#if isPreviewableFile(file.name)}
+                              <button 
+                                class="file-btn preview-btn" 
+                                on:click={() => previewImage(torrent, file)}
+                                title="Preview"
+                              >
+                                👁️ Preview
+                              </button>
                             {/if}
                           </div>
                         </div>
@@ -1025,29 +1000,23 @@
                           <span class="file-name">{file.name}</span>
                           <span class="file-size">{formatBytes(file.length)}</span>
                           <div class="file-actions">
-                            {#if torrent.progress > 0}
-                              {#if isStreamableFile(file.name)}
-                                <button 
-                                  class="file-btn stream-btn {!canStreamFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canStreamFile(torrent, file) && streamMediaFile(torrent, file)}
-                                  title={canStreamFile(torrent, file) ? 'Stream' : 'Not ready for streaming'}
-                                  disabled={!canStreamFile(torrent, file)}
-                                >
-                                  🎬 Stream
-                                </button>
-                              {/if}
-                              {#if isPreviewableFile(file.name)}
-                                <button 
-                                  class="file-btn preview-btn {!canPreviewFile(torrent, file) ? 'disabled' : ''}" 
-                                  on:click={() => canPreviewFile(torrent, file) && previewImage(torrent, file)}
-                                  title={canPreviewFile(torrent, file) ? 'Preview' : 'Not ready for preview'}
-                                  disabled={!canPreviewFile(torrent, file)}
-                                >
-                                  👁️ Preview
-                                </button>
-                              {/if}
-                            {:else}
-                              <span class="file-status">Waiting for download...</span>
+                            {#if isStreamableFile(file.name)}
+                              <button 
+                                class="file-btn stream-btn" 
+                                on:click={() => streamMediaFile(torrent, file)}
+                                title="Stream"
+                              >
+                                🎬 Stream
+                              </button>
+                            {/if}
+                            {#if isPreviewableFile(file.name)}
+                              <button 
+                                class="file-btn preview-btn" 
+                                on:click={() => previewImage(torrent, file)}
+                                title="Preview"
+                              >
+                                👁️ Preview
+                              </button>
                             {/if}
                           </div>
                         </div>
