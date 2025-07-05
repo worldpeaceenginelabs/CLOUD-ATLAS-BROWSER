@@ -42,10 +42,10 @@ class TorrentManager {
 
   // Add torrent from magnet URI
   async addTorrent(magnetUri) {
-    // Check if this is a resume operation
+        // Check if this is a resume operation
     const isResume = this.stateManager.isTorrentPaused(magnetUri);
-    if (isResume) {
-      console.log('Resuming paused torrent:', magnetUri);
+        if (isResume) {
+          console.log('Resuming paused torrent:', magnetUri);
       this.stateManager.removeFromPausedTorrents(magnetUri);
     }
 
@@ -56,24 +56,24 @@ class TorrentManager {
       onDownload: (torrent, magnetUri) => {
         // Store torrent path info during download event
         this.stateManager.storeTorrentPath(magnetUri, torrent);
-        
-        // Store the torrent object itself when it's reliable (during download)
+          
+          // Store the torrent object itself when it's reliable (during download)
         this.stateManager.storeActiveTorrent(torrent, magnetUri);
-        
-        const progressData = {
-          magnetUri,
-          progress: torrent.progress,
-          downloadSpeed: torrent.downloadSpeed,
-          uploadSpeed: torrent.uploadSpeed,
-          peers: torrent.numPeers,
-          downloaded: torrent.downloaded,
-          uploaded: torrent.uploaded,
-          // SEND THE RELIABLE PATH to the renderer!
-          actualDownloadPath: torrent.name && torrent.path ? 
-            path.join(torrent.path, torrent.name) : null
-        };
-        
-        this.sendToRenderer('torrent-progress', progressData);
+          
+          const progressData = {
+            magnetUri,
+            progress: torrent.progress,
+            downloadSpeed: torrent.downloadSpeed,
+            uploadSpeed: torrent.uploadSpeed,
+            peers: torrent.numPeers,
+            downloaded: torrent.downloaded,
+            uploaded: torrent.uploaded,
+            // SEND THE RELIABLE PATH to the renderer!
+            actualDownloadPath: torrent.name && torrent.path ? 
+              path.join(torrent.path, torrent.name) : null
+          };
+          
+          this.sendToRenderer('torrent-progress', progressData);
       },
       onDone: (torrent, magnetUri) => {
         // Handle torrent completion
@@ -224,19 +224,19 @@ class TorrentManager {
         if (removed) {
           // Delete files if keepFiles is false
           await this.fileOperations.deleteTorrentFiles(downloadPath, keepFiles);
-          
-          // Clean up tracking
+              
+              // Clean up tracking
           this.stateManager.removeFromActivePaths(magnetUri);
-          
-          // IMPORTANT: Remove from streamable torrents registry when completely removed
-          if (torrent.infoHash) {
+              
+              // IMPORTANT: Remove from streamable torrents registry when completely removed
+              if (torrent.infoHash) {
             this.stateManager.removeFromActiveTorrents(torrent.infoHash);
             this.stateManager.removeFromTorrentInfoMap(torrent.infoHash);
-            console.log(`Removed active torrent from streamable registry: ${torrent.infoHash}`);
-          }
-          
+                console.log(`Removed active torrent from streamable registry: ${torrent.infoHash}`);
+              }
+              
           return true;
-        }
+            }
         
         return false;
       }

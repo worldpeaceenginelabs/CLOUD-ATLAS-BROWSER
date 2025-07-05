@@ -236,7 +236,7 @@
       onStreamMediaFile={handleStreamMediaFile}
       onPreviewImage={handlePreviewImage}
     />
-  </div>
+    </div>
 
 
 </SidebarLayout>
